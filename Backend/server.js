@@ -8,7 +8,8 @@ const { DEPARTMENTS, ORCHESTRATOR, SCENARIOS, FLOW_EDGES, ROUTING_RULES, routeTa
 const { buildAgentSystemPrompt, ORCHESTRATOR_PROMPT } = require('./agent-prompt');
 const { resolveModel, getTaskType, getImageModel, DEFAULT_MODELS } = require('./model-router');
 
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
 const FRONTEND_DIR = path.resolve(__dirname, '..', 'Frontend');
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
@@ -261,8 +262,8 @@ app.post('/api/embed', (_req, res) => {
 app.use(express.static(FRONTEND_DIR));
 app.get('/', (_req, res) => res.sendFile(path.join(FRONTEND_DIR, 'index.html')));
 
-app.listen(PORT, () => {
-  console.log(`[multi-agent] API + UI: http://localhost:${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`[multi-agent] API + UI listening on ${HOST}:${PORT}`);
   console.log(`[multi-agent] LLM key: ${OPENROUTER_API_KEY ? 'OK' : 'MISSING'}`);
   console.log(`[multi-agent] Defaults:`, DEFAULT_MODELS);
   console.log(`[multi-agent] Image model: ${getImageModel()}`);

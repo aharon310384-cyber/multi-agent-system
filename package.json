@@ -1,0 +1,19 @@
+{
+  "name": "multi-agent-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Многоагентная система: оркестратор + департаменты (Marketing/Design/Sales/IT/Management/Security). Backend на Express + статический Frontend.",
+  "main": "Backend/server.js",
+  "scripts": {
+    "start": "node Backend/server.js",
+    "dev": "node --watch Backend/server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  }
+}

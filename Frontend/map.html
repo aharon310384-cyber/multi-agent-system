@@ -70,6 +70,12 @@
   .tb-right { display: flex; align-items: center; gap: 14px; }
   .tb-time { color: var(--text-2); font-size: 11px; }
   .tb-led { display: inline-flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-2); letter-spacing: 0.08em; }
+  .tb-link {
+    color: var(--text-2); text-decoration: none; font-size: 11px;
+    padding: 4px 10px; border: 1px solid var(--border); border-radius: 4px;
+    background: transparent; transition: all 0.15s;
+  }
+  .tb-link:hover { color: var(--text); border-color: var(--border-strong); background: rgba(77,227,255,0.05); }
   .pill {
     display: inline-flex; align-items: center; gap: 8px;
     border: 1px solid var(--border); border-radius: 4px;
@@ -1473,6 +1479,7 @@ function TopBar({ clock }) {
         <Pill label="успех 24ч" value="97.5%" tone="green" />
       </div>
       <div className="tb-right">
+        <a className="tb-link" href="/" title="Вернуться в чат-оркестратор">← Главная</a>
         <div className="tb-time mono">{clock}</div>
         <div className="tb-led"><StatusDot color="#66F2A6" pulse /> СИСТЕМА В НОРМЕ</div>
       </div>

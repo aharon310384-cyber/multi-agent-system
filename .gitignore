@@ -1,0 +1,13 @@
+.vercel
+.env
+.env.local
+.env.*.local
+node_modules/
+
+# Локальные настройки Claude Code (разрешения и т.п.)
+.claude/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+*.log

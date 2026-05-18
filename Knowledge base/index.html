@@ -1,0 +1,1397 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Multi-Agent Operations · Orchestration Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #05070A;
+    --bg2: #080B10;
+    --surface: #10151D;
+    --surface-2: #141A23;
+    --border: rgba(255,255,255,0.08);
+    --border-strong: rgba(255,255,255,0.14);
+    --text: #F4F7FA;
+    --text-2: #8E9AAA;
+    --text-3: #5C6776;
+    --cyan: #4DE3FF;
+    --green: #66F2A6;
+    --amber: #F6C85F;
+    --red: #FF5C7A;
+  }
+  * { box-sizing: border-box; }
+  html, body, #root { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13px;
+    line-height: 1.45;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  button { font-family: inherit; }
+
+  /* ============================ App shell ============================ */
+  .app {
+    display: grid;
+    grid-template-rows: 56px 1fr auto;
+    height: 100vh;
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 0%, rgba(77,227,255,0.04), transparent 60%),
+      var(--bg);
+  }
+
+  /* ============================ Top bar ============================ */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(16,21,29,0.85), rgba(8,11,16,0.7));
+    backdrop-filter: blur(6px);
+    z-index: 50;
+  }
+  .tb-left { display: flex; align-items: center; gap: 12px; }
+  .tb-mark {
+    width: 32px; height: 32px; display: grid; place-items: center;
+    border: 1px solid var(--border-strong); border-radius: 6px;
+    background: rgba(77,227,255,0.04);
+  }
+  .tb-title { font-size: 13px; font-weight: 600; letter-spacing: -0.005em; }
+  .tb-sub { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-2); letter-spacing: 0.06em; text-transform: uppercase; }
+  .tb-mid { display: flex; gap: 8px; }
+  .tb-right { display: flex; align-items: center; gap: 14px; }
+  .tb-time { color: var(--text-2); font-size: 11px; }
+  .tb-led { display: inline-flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-2); letter-spacing: 0.08em; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: 4px 8px; background: rgba(20,26,35,0.5);
+  }
+  .pill-label { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--text-2); letter-spacing: 0.08em; text-transform: uppercase; }
+  .pill-value { font-size: 11.5px; font-weight: 500; color: var(--text); }
+  .pill-green .pill-value { color: var(--green); }
+
+  /* ============================ Stage + canvas ============================ */
+  .stage {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .canvas-wrap {
+    position: relative;
+    overflow: hidden;
+    background: var(--bg);
+  }
+  .canvas-bg-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black, transparent 90%);
+  }
+  .canvas-bg-vignette {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(77,227,255,0.045), transparent 70%);
+    pointer-events: none;
+  }
+  .canvas-bg-noise {
+    position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.06 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    opacity: 0.55;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+  }
+  .canvas {
+    position: absolute;
+    left: 50%; top: 50%;
+    transform-origin: center center;
+    transform: translate(-50%, -50%);
+  }
+
+  /* ============================ Edge layer ============================ */
+  .edge-layer, .agent-connectors {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    pointer-events: none;
+  }
+  .edge-layer g { pointer-events: auto; }
+  .edge-flow-active {
+    stroke-dasharray: 4 6;
+    animation: dashflow 1.4s linear infinite;
+  }
+  @keyframes dashflow { to { stroke-dashoffset: -20; } }
+
+  /* ============================ Node base ============================ */
+  .node {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    transition: opacity 240ms ease;
+    will-change: transform;
+  }
+  .node.is-dimmed { opacity: 0.32; }
+
+  /* Orchestrator */
+  .node-orchestrator {
+    width: 220px; height: 220px;
+    display: grid; place-items: center;
+    cursor: pointer;
+  }
+  .orch-ring {
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(77,227,255,0.18);
+    pointer-events: none;
+  }
+  .orch-ring-1 { inset: -16px; border-style: dashed; opacity: 0.5; animation: spin 60s linear infinite; }
+  .orch-ring-2 { inset: 14px; border: 1px solid rgba(77,227,255,0.12); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .orch-core {
+    position: relative;
+    width: 132px; height: 132px;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 30% 30%, rgba(77,227,255,0.18), transparent 60%),
+      linear-gradient(160deg, #0F1620, #07090D);
+    border: 1px solid rgba(77,227,255,0.4);
+    display: grid; place-items: center;
+    box-shadow:
+      0 0 0 1px rgba(77,227,255,0.08),
+      0 0 60px rgba(77,227,255,0.15),
+      inset 0 0 30px rgba(77,227,255,0.06);
+  }
+  .orch-core-pulse {
+    position: absolute; inset: -2px;
+    border-radius: 50%;
+    border: 1px solid rgba(77,227,255,0.5);
+    animation: pulse-out 2.4s ease-out infinite;
+  }
+  @keyframes pulse-out {
+    0% { transform: scale(0.85); opacity: 0.8; }
+    100% { transform: scale(1.35); opacity: 0; }
+  }
+  .orch-glyph { display: grid; place-items: center; }
+  .orch-label {
+    position: absolute;
+    top: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+    white-space: nowrap; text-align: center;
+  }
+  .orch-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px; color: var(--cyan); letter-spacing: 0.18em;
+  }
+  .orch-title {
+    font-size: 14px; font-weight: 600; letter-spacing: -0.005em;
+    margin-top: 2px;
+  }
+  .orch-status {
+    margin-top: 4px;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--text-2); letter-spacing: 0.06em;
+  }
+  .node-orchestrator.is-expanded .orch-core { box-shadow: 0 0 0 1px rgba(77,227,255,0.2), 0 0 80px rgba(77,227,255,0.25); }
+
+  /* Status dot */
+  .status-dot {
+    position: relative;
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+  }
+  .status-dot-pulse {
+    position: absolute; inset: -2px;
+    border-radius: 50%;
+    opacity: 0.4;
+    animation: dot-pulse 1.6s ease-out infinite;
+  }
+  @keyframes dot-pulse { 0% { transform: scale(0.6); opacity: 0.6; } 100% { transform: scale(2.4); opacity: 0; } }
+
+  /* Department */
+  .node-department {
+    width: 188px;
+    cursor: pointer;
+  }
+  .dept-frame {
+    position: relative;
+    background: linear-gradient(180deg, var(--surface), #0C1118);
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    padding: 10px 12px 10px 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.03);
+    transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+  }
+  .node-department::before {
+    content: ''; position: absolute; left: 0; top: 10px; bottom: 10px;
+    width: 2px; background: var(--accent); border-radius: 0 2px 2px 0;
+    opacity: 0.85;
+  }
+  .node-department.is-expanded .dept-frame {
+    border-color: var(--accent);
+    box-shadow: 0 8px 28px rgba(0,0,0,0.5), 0 0 0 1px var(--accent), inset 0 0 30px rgba(255,255,255,0.02);
+  }
+  .node-department.is-active .dept-frame {
+    border-color: var(--cyan);
+    box-shadow: 0 8px 28px rgba(0,0,0,0.5), 0 0 0 1px var(--cyan), 0 0 40px rgba(77,227,255,0.18);
+  }
+  .dept-header { display: flex; align-items: center; gap: 8px; }
+  .dept-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9.5px; letter-spacing: 0.12em;
+    border: 1px solid currentColor; border-radius: 3px;
+    padding: 2px 5px; opacity: 0.85;
+  }
+  .dept-title { font-size: 13px; font-weight: 600; flex: 1; }
+  .dept-toggle {
+    width: 18px; height: 18px; display: grid; place-items: center;
+    border: 1px solid var(--border-strong); border-radius: 3px;
+    color: var(--text-2); font-size: 13px; line-height: 1;
+  }
+  .dept-meta { display: flex; gap: 14px; margin: 8px 0 6px; }
+  .dept-meta-row { display: flex; flex-direction: column; gap: 1px; }
+  .meta-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-3); letter-spacing: 0.08em; text-transform: uppercase; }
+  .meta-val { font-size: 11px; color: var(--text); }
+  .dept-bars { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
+  .bar-row { display: flex; align-items: center; gap: 8px; }
+  .bar-key { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-3); letter-spacing: 0.08em; text-transform: uppercase; width: 56px; }
+  .bar-track { flex: 1; height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 2px; }
+  .bar-val { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-2); }
+  .dept-foot { display: flex; align-items: center; gap: 6px; padding-top: 6px; border-top: 1px dashed var(--border); }
+  .dept-status-label { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--text-2); letter-spacing: 0.08em; text-transform: uppercase; }
+
+  /* Agent */
+  .node-agent {
+    cursor: pointer;
+    transition: transform 200ms ease;
+  }
+  .agent-frame {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 6px 8px;
+    min-width: 130px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  }
+  .agent-dot { width: 4px; height: 18px; border-radius: 2px; flex: 0 0 4px; }
+  .agent-body { display: flex; flex-direction: column; min-width: 0; }
+  .agent-name { font-size: 11px; font-weight: 500; line-height: 1.2; }
+  .agent-skills { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--text-2); letter-spacing: 0.04em; margin-top: 1px; }
+  .node-agent:hover .agent-frame { border-color: var(--border-strong); background: #181F29; }
+  .node-agent.is-selected .agent-frame { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan), 0 4px 14px rgba(77,227,255,0.18); }
+
+  /* Artifact */
+  .node-artifact {
+    pointer-events: none;
+    opacity: 0.85;
+  }
+  .art-frame {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(8,11,16,0.85);
+    border: 1px dashed var(--border-strong);
+    border-radius: 3px;
+    padding: 3px 6px;
+  }
+  .art-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; color: var(--text-2); letter-spacing: 0.08em; text-transform: uppercase;
+  }
+
+  /* ============================ Inspector ============================ */
+  .inspector {
+    border-left: 1px solid var(--border);
+    background: linear-gradient(180deg, var(--surface), #0A0E14);
+    padding: 18px 18px 18px;
+    overflow-y: auto;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .insp-head { display: flex; align-items: center; justify-content: space-between; }
+  .insp-eyebrow { display: flex; align-items: center; gap: 8px; }
+  .insp-dept-chip {
+    font-family: 'JetBrains Mono', monospace; font-size: 9.5px;
+    letter-spacing: 0.1em; padding: 2px 6px; border: 1px solid currentColor; border-radius: 3px;
+  }
+  .insp-eyebrow-spacer { color: var(--text-3); }
+  .insp-eyebrow-mono { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--text-2); letter-spacing: 0.12em; }
+  .insp-close {
+    background: transparent; border: 1px solid var(--border); color: var(--text-2);
+    width: 24px; height: 24px; border-radius: 3px; cursor: pointer; font-size: 14px;
+  }
+  .insp-close:hover { color: var(--text); border-color: var(--border-strong); }
+  .insp-title { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; margin-top: -4px; }
+  .insp-status-row {
+    display: flex; align-items: center; gap: 6px;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-2);
+  }
+  .insp-sep { color: var(--text-3); }
+  .insp-section { display: flex; flex-direction: column; gap: 6px; }
+  .insp-section-title {
+    font-family: 'JetBrains Mono', monospace; font-size: 9.5px;
+    color: var(--text-2); letter-spacing: 0.14em; text-transform: uppercase;
+  }
+  .bullets { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 3px; }
+  .bullets li { position: relative; padding-left: 12px; font-size: 12.5px; }
+  .bullets li::before {
+    content: ''; position: absolute; left: 0; top: 7px;
+    width: 4px; height: 4px; background: var(--cyan); transform: rotate(45deg);
+  }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 5px; }
+  .chip {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    padding: 3px 7px; border-radius: 3px;
+    border: 1px solid var(--border);
+    color: var(--text-2);
+    background: rgba(255,255,255,0.02);
+  }
+  .chip-in { color: var(--cyan); border-color: rgba(77,227,255,0.3); background: rgba(77,227,255,0.06); }
+  .chip-out { color: var(--green); border-color: rgba(102,242,166,0.3); background: rgba(102,242,166,0.06); }
+  .chip-tool { color: var(--text); }
+  .insp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .insp-example {
+    margin: 0; padding: 10px 12px;
+    border-left: 2px solid var(--cyan);
+    background: rgba(77,227,255,0.04);
+    font-size: 12.5px;
+    color: var(--text);
+  }
+  .insp-footer {
+    margin-top: auto;
+    display: flex; justify-content: space-between;
+    padding-top: 12px; border-top: 1px solid var(--border);
+  }
+  .insp-mono { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-2); letter-spacing: 0.06em; }
+  .insp-mono.dim { color: var(--text-3); }
+
+  /* When no selection, inspector becomes a passive sysinfo panel */
+  .inspector-empty {
+    display: flex; flex-direction: column; gap: 18px;
+  }
+  .insp-eyebrow-mono.dim { color: var(--text-3); }
+  .empty-hint { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px dashed var(--border); }
+  .empty-hint-title { font-size: 14px; font-weight: 600; color: var(--text); }
+  .empty-hint-sub { font-size: 12.5px; color: var(--text-2); line-height: 1.5; }
+  .empty-help { display: flex; flex-direction: column; gap: 8px; margin-top: auto; padding-top: 14px; border-top: 1px solid var(--border); }
+  .help-row { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-2); }
+  .help-row kbd {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    padding: 2px 6px; border: 1px solid var(--border-strong); border-radius: 3px;
+    background: rgba(255,255,255,0.04); color: var(--text); min-width: 30px; text-align: center;
+  }
+
+  /* ============================ Scenarios + Timeline ============================ */
+  .bottom-stack {
+    border-top: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(8,11,16,0.65), rgba(5,7,10,0.95));
+  }
+  .scenarios-bar {
+    display: flex; align-items: center; gap: 14px;
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sc-eyebrow {
+    font-family: 'JetBrains Mono', monospace; font-size: 9.5px;
+    color: var(--text-2); letter-spacing: 0.16em;
+  }
+  .sc-list { display: flex; gap: 6px; flex: 1; flex-wrap: wrap; }
+  .sc-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 10px;
+    background: rgba(20,26,35,0.5);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-2);
+    cursor: pointer;
+    transition: all 160ms ease;
+    font-size: 12px;
+  }
+  .sc-btn:hover { color: var(--text); border-color: var(--border-strong); background: rgba(30,38,50,0.6); }
+  .sc-btn.is-active { color: var(--text); border-color: var(--cyan); background: rgba(77,227,255,0.08); box-shadow: inset 0 0 0 1px rgba(77,227,255,0.15); }
+  .sc-num { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--cyan); letter-spacing: 0.08em; }
+  .sc-name { font-size: 12px; }
+  .sc-actions { display: flex; gap: 6px; }
+  .sc-play, .sc-reset {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px;
+    border: 1px solid var(--cyan);
+    background: rgba(77,227,255,0.08);
+    color: var(--cyan);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .sc-play:hover { background: rgba(77,227,255,0.14); }
+  .sc-reset { border-color: var(--border); background: transparent; color: var(--text-2); }
+  .sc-reset:hover { color: var(--text); border-color: var(--border-strong); }
+  .sc-icon { font-family: 'JetBrains Mono', monospace; font-size: 10px; }
+
+  .timeline { padding: 10px 18px 12px; }
+  .tl-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px; }
+  .tl-eyebrow {
+    font-family: 'JetBrains Mono', monospace; font-size: 9.5px;
+    color: var(--text-2); letter-spacing: 0.16em;
+  }
+  .tl-mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text); }
+  .tl-dim { color: var(--text-2); margin-left: auto; }
+  .tl-track {
+    display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .tl-step { display: flex; flex-direction: column; gap: 4px; }
+  .tl-dotline { display: flex; align-items: center; gap: 0; }
+  .tl-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--text-3);
+    flex: 0 0 8px;
+    transition: all 200ms ease;
+  }
+  .tl-line {
+    flex: 1; height: 1px; background: rgba(255,255,255,0.08);
+    transition: background 200ms ease;
+  }
+  .tl-step.is-done .tl-dot { background: var(--green); border-color: var(--green); box-shadow: 0 0 8px rgba(102,242,166,0.5); }
+  .tl-step.is-done .tl-line { background: var(--green); }
+  .tl-step.is-active .tl-dot { background: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 14px rgba(77,227,255,0.8); animation: tl-pulse 1.4s ease-in-out infinite; }
+  @keyframes tl-pulse { 50% { box-shadow: 0 0 22px rgba(77,227,255,1); } }
+  .tl-step-body { padding-right: 12px; }
+  .tl-step-num { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--text-3); letter-spacing: 0.1em; }
+  .tl-step-label { font-size: 12px; font-weight: 500; }
+  .tl-step.is-queued .tl-step-label { color: var(--text-2); }
+  .tl-step.is-done .tl-step-label { color: var(--text); }
+  .tl-step.is-active .tl-step-label { color: var(--cyan); }
+  .tl-step-dept { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--text-3); letter-spacing: 0.08em; text-transform: uppercase; }
+
+  /* Legend (bottom-left of canvas) */
+  .legend {
+    position: absolute; left: 16px; bottom: 16px;
+    padding: 10px 12px;
+    background: rgba(8,11,16,0.7);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    backdrop-filter: blur(6px);
+    z-index: 20;
+  }
+  .legend-title { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: var(--text-2); letter-spacing: 0.14em; margin-bottom: 6px; }
+  .legend-row { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-2); margin: 2px 0; }
+
+  /* Hover HUD (top-center of canvas) */
+  .hover-hud {
+    position: absolute; left: 50%; top: 12px;
+    transform: translateX(-50%);
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px;
+    background: rgba(8,11,16,0.92);
+    border: 1px solid var(--cyan);
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text);
+    z-index: 30;
+    box-shadow: 0 0 30px rgba(77,227,255,0.15);
+  }
+  .hh-mono { color: var(--cyan); letter-spacing: 0.14em; font-size: 9.5px; }
+  .hh-from, .hh-to { color: var(--text); }
+  .hh-arr { color: var(--cyan); }
+  .hh-sep { color: var(--text-3); }
+  .hh-art { color: var(--amber); }
+
+  /* Scrollbars */
+  .inspector::-webkit-scrollbar { width: 6px; }
+  .inspector::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" data-presets="react">
+/* ============================================================
+   data.js — agentSystemData
+   ============================================================ */
+const DEPARTMENTS = [
+  {
+    id: 'strategy', name: 'Strategy', accent: '#4DE3FF', short: 'STR',
+    output: 'Strategy doc', workload: 0.62, activeTasks: 3,
+    agents: [
+      { id: 'biz_analyst', name: 'Business Analyst', skills: ['Discovery', 'Metrics map'], inputs: ['Raw brief', 'Constraints'], outputs: ['Problem map', 'KPIs'], tools: ['Notion', 'Linear'], example: 'Map the core jobs-to-be-done for a B2B SaaS launch.' },
+      { id: 'product_strat', name: 'Product Strategist', skills: ['Roadmap', 'Positioning'], inputs: ['Problem map'], outputs: ['Roadmap', 'Positioning'], tools: ['Miro'], example: 'Sequence a 90-day roadmap toward PMF.' },
+      { id: 'market_research', name: 'Market Research', skills: ['ICP', 'TAM/SAM'], inputs: ['Vertical', 'Geo'], outputs: ['ICP doc', 'Sizing'], tools: ['Perplexity', 'SimilarWeb'], example: 'Build ICP for mid-market fintech in EU.' },
+      { id: 'offer_arch', name: 'Offer Architect', skills: ['Pricing', 'Bundles'], inputs: ['ICP', 'Costs'], outputs: ['Offer matrix'], tools: ['Sheets'], example: 'Design a three-tier annual contract structure.' },
+      { id: 'competitor', name: 'Competitor Analyst', skills: ['Feature gap', 'Pricing recon'], inputs: ['Market list'], outputs: ['Battlecard'], tools: ['G2'], example: 'Compare top-5 competitors on activation flow.' },
+    ],
+  },
+  {
+    id: 'marketing', name: 'Marketing', accent: '#F6C85F', short: 'MKT',
+    output: 'Campaign plan', workload: 0.78, activeTasks: 5,
+    agents: [
+      { id: 'mkt_lead', name: 'Marketing Lead', skills: ['Channel mix', 'Budget'], inputs: ['Strategy', 'Budget'], outputs: ['Campaign plan'], tools: ['HubSpot'], example: 'Allocate $80k across 4 channels for Q3.' },
+      { id: 'smm', name: 'SMM Specialist', skills: ['Hooks', 'Calendar'], inputs: ['Campaign plan'], outputs: ['Content calendar'], tools: ['Buffer'], example: 'Plan a 4-week LinkedIn launch sequence.' },
+      { id: 'seo', name: 'SEO Specialist', skills: ['Keywords', 'On-page'], inputs: ['Topic clusters'], outputs: ['Brief stack'], tools: ['Ahrefs'], example: 'Build a 30-keyword pillar cluster.' },
+      { id: 'perf', name: 'Performance Marketer', skills: ['Bidding', 'Creative test'], inputs: ['ICP', 'Creatives'], outputs: ['Ad set'], tools: ['Google Ads'], example: 'Run a 6-variant creative split on Meta.' },
+      { id: 'creative_strat', name: 'Creative Strategist', skills: ['Hooks', 'Story'], inputs: ['Brand', 'Insights'], outputs: ['Hook bank'], tools: ['Figma'], example: 'Draft 12 ad hooks rooted in user research.' },
+      { id: 'crm', name: 'CRM Marketer', skills: ['Lifecycle', 'Drip'], inputs: ['Segments'], outputs: ['Email flows'], tools: ['Customer.io'], example: 'Author a 5-touch onboarding sequence.' },
+      { id: 'pr', name: 'PR Agent', skills: ['Outreach', 'Press kit'], inputs: ['Story angle'], outputs: ['Press list'], tools: ['Muck Rack'], example: 'Land coverage in 3 tier-1 tech outlets.' },
+    ],
+  },
+  {
+    id: 'content', name: 'Content', accent: '#66F2A6', short: 'CON',
+    output: 'Copy & briefs', workload: 0.55, activeTasks: 4,
+    agents: [
+      { id: 'copywriter', name: 'Copywriter', skills: ['Long-form', 'Tone'], inputs: ['Brief'], outputs: ['Article', 'Ad copy'], tools: ['Notion'], example: 'Write a 1,500-word thought-leadership piece.' },
+      { id: 'scriptwriter', name: 'Scriptwriter', skills: ['Story arc', 'VO'], inputs: ['Concept'], outputs: ['Shot script'], tools: ['Final Draft'], example: 'Outline a 60-second product film script.' },
+      { id: 'editor', name: 'Editor', skills: ['Edit', 'Fact-check'], inputs: ['Draft'], outputs: ['Final copy'], tools: ['Grammarly'], example: 'Tighten a 2k-word draft to 1.2k crisp words.' },
+      { id: 'pres_writer', name: 'Presentation Writer', skills: ['Narrative', 'Slides'], inputs: ['Outline'], outputs: ['Deck script'], tools: ['Keynote'], example: 'Storyboard a 15-slide investor narrative.' },
+      { id: 'lp_writer', name: 'Landing Copywriter', skills: ['Hierarchy', 'Conversion'], inputs: ['Offer'], outputs: ['Landing copy'], tools: ['Webflow'], example: 'Draft H1/H2 + 6 sections for a pricing page.' },
+      { id: 'tech_brief', name: 'Technical Brief Writer', skills: ['Specs', 'Acceptance'], inputs: ['Designs'], outputs: ['Tech spec'], tools: ['Linear'], example: 'Turn a design handoff into a build spec.' },
+    ],
+  },
+  {
+    id: 'design', name: 'Design', accent: '#C8A2FF', short: 'DES',
+    output: 'Visual system', workload: 0.66, activeTasks: 4,
+    agents: [
+      { id: 'art_dir', name: 'Art Director', skills: ['Direction', 'Critique'], inputs: ['Brand', 'Brief'], outputs: ['Visual lang.'], tools: ['Figma'], example: 'Set art direction for a product launch.' },
+      { id: 'uxui', name: 'UX/UI Designer', skills: ['Flows', 'Components'], inputs: ['Spec'], outputs: ['Wireframes', 'UI kit'], tools: ['Figma'], example: 'Design a 6-step onboarding flow.' },
+      { id: 'web', name: 'Web Designer', skills: ['Landing', 'Layout'], inputs: ['Copy', 'Brand'], outputs: ['Hi-fi page'], tools: ['Figma'], example: 'Design a launch landing in 8 sections.' },
+      { id: 'graphic', name: 'Graphic Designer', skills: ['Banners', 'Print'], inputs: ['Brief'], outputs: ['Banners'], tools: ['Illustrator'], example: 'Produce 12 ad banners in 3 sizes.' },
+      { id: 'motion', name: 'Motion Designer', skills: ['Anim.', 'After Effects'], inputs: ['Storyboard'], outputs: ['Clip pack'], tools: ['AE'], example: 'Animate a 30-second product loop.' },
+      { id: 'brand', name: 'Brand Designer', skills: ['Identity', 'Tokens'], inputs: ['Strategy'], outputs: ['Logo', 'Tokens'], tools: ['Figma'], example: 'Refresh logotype + color tokens.' },
+    ],
+  },
+  {
+    id: 'development', name: 'Development', accent: '#7AB8FF', short: 'DEV',
+    output: 'Frontend build', workload: 0.71, activeTasks: 6,
+    agents: [
+      { id: 'tech_lead', name: 'Tech Lead', skills: ['Architecture', 'Reviews'], inputs: ['Tech spec'], outputs: ['Plan'], tools: ['GitHub'], example: 'Plan a Next.js + tRPC architecture.' },
+      { id: 'fe', name: 'Frontend Dev', skills: ['React', 'Perf'], inputs: ['Designs'], outputs: ['Build'], tools: ['Next.js'], example: 'Ship a landing in 3 days.' },
+      { id: 'be', name: 'Backend Dev', skills: ['APIs', 'DB'], inputs: ['Schema'], outputs: ['Endpoints'], tools: ['Node'], example: 'Build a webhook ingest pipeline.' },
+      { id: 'full', name: 'Fullstack Dev', skills: ['E2E', 'Glue'], inputs: ['Spec'], outputs: ['Feature'], tools: ['TS'], example: 'Implement billing end-to-end.' },
+      { id: 'qa', name: 'QA Agent', skills: ['Cases', 'Regression'], inputs: ['Build'], outputs: ['Report'], tools: ['Playwright'], example: 'Run 80-case smoke suite.' },
+      { id: 'devops', name: 'DevOps Agent', skills: ['CI/CD', 'Infra'], inputs: ['Build'], outputs: ['Deploy'], tools: ['Vercel'], example: 'Set up preview env per PR.' },
+    ],
+  },
+  {
+    id: 'production', name: 'Production', accent: '#FF9E7A', short: 'PRD',
+    output: 'Release pack', workload: 0.48, activeTasks: 2,
+    agents: [
+      { id: 'producer', name: 'Project Producer', skills: ['Schedule', 'Triage'], inputs: ['Plan'], outputs: ['Gantt'], tools: ['Linear'], example: 'Run a 3-week launch cadence.' },
+      { id: 'video_ed', name: 'Video Editor', skills: ['Cut', 'Color'], inputs: ['Footage'], outputs: ['Master cut'], tools: ['Premiere'], example: 'Cut a 90-second hero film.' },
+      { id: 'lp_builder', name: 'Landing Builder', skills: ['CMS', 'A/B'], inputs: ['Design'], outputs: ['Live page'], tools: ['Webflow'], example: 'Publish a 6-page micro-site.' },
+      { id: 'asset', name: 'Asset Manager', skills: ['DAM', 'Versioning'], inputs: ['Files'], outputs: ['Library'], tools: ['Frame.io'], example: 'Index 400 assets across 6 channels.' },
+      { id: 'release', name: 'Release Coordinator', skills: ['Cutover', 'Comms'], inputs: ['All'], outputs: ['Go-live'], tools: ['Slack'], example: 'Coordinate a Tuesday 10:00 cutover.' },
+    ],
+  },
+  {
+    id: 'analytics', name: 'Analytics', accent: '#A8F0D2', short: 'ANA',
+    output: 'Insight report', workload: 0.52, activeTasks: 3,
+    agents: [
+      { id: 'data', name: 'Data Analyst', skills: ['SQL', 'Dashboards'], inputs: ['Events'], outputs: ['Dashboards'], tools: ['Metabase'], example: 'Build a funnel by acquisition channel.' },
+      { id: 'growth', name: 'Growth Analyst', skills: ['Experiments', 'Cohorts'], inputs: ['Funnel'], outputs: ['Hypotheses'], tools: ['Amplitude'], example: 'Find 3 leverage points in onboarding.' },
+      { id: 'seo_an', name: 'SEO Analyst', skills: ['Rankings', 'Tech audit'], inputs: ['Pages'], outputs: ['Audit'], tools: ['Search Console'], example: 'Audit 60 pages for crawl issues.' },
+      { id: 'attribution', name: 'Attribution Agent', skills: ['MMM', 'Multi-touch'], inputs: ['Spend', 'Events'], outputs: ['Attribution'], tools: ['Dreamdata'], example: 'Reconcile platform vs. server attribution.' },
+      { id: 'feedback', name: 'Feedback Analyst', skills: ['NPS', 'Tags'], inputs: ['Tickets', 'Surveys'], outputs: ['Themes'], tools: ['Sprig'], example: 'Cluster 1,200 NPS verbatims into themes.' },
+    ],
+  },
+  {
+    id: 'ops', name: 'Automation & Ops', accent: '#FF5C7A', short: 'OPS',
+    output: 'Workflows', workload: 0.43, activeTasks: 7,
+    agents: [
+      { id: 'workflow', name: 'Workflow Automator', skills: ['n8n', 'Triggers'], inputs: ['Process'], outputs: ['Workflow'], tools: ['n8n'], example: 'Automate weekly reporting digest.' },
+      { id: 'integration', name: 'Integration Agent', skills: ['APIs', 'OAuth'], inputs: ['Spec'], outputs: ['Connection'], tools: ['Zapier'], example: 'Wire Stripe to CRM and Slack.' },
+      { id: 'calendar', name: 'Calendar Agent', skills: ['Scheduling'], inputs: ['Roster'], outputs: ['Meetings'], tools: ['Google Cal'], example: 'Book 12 customer interviews this week.' },
+      { id: 'email', name: 'Email Agent', skills: ['Triage', 'Replies'], inputs: ['Inbox'], outputs: ['Drafts'], tools: ['Gmail'], example: 'Triage 200 inbound and draft 20 replies.' },
+      { id: 'crm_agent', name: 'CRM Agent', skills: ['Records', 'Enrichment'], inputs: ['Leads'], outputs: ['Records'], tools: ['HubSpot'], example: 'Enrich 400 leads with firmographics.' },
+      { id: 'kb', name: 'Knowledge Base Agent', skills: ['Indexing', 'RAG'], inputs: ['Docs'], outputs: ['KB updates'], tools: ['Notion'], example: 'Re-index 2k docs into the KB.' },
+    ],
+  },
+];
+
+const ORCHESTRATOR = {
+  id: 'orchestrator', name: 'AI Orchestrator', status: 'Routing task',
+  agents: [
+    { id: 'chief', name: 'Chief Orchestrator', skills: ['Routing', 'Approvals'], inputs: ['User task'], outputs: ['Plan'], tools: ['Internal'], example: 'Decompose "launch campaign" into 7 subtasks.' },
+    { id: 'decomposer', name: 'Task Decomposer', skills: ['DAG', 'Granularity'], inputs: ['Plan'], outputs: ['Subtasks'], tools: ['Internal'], example: 'Split a deck request into 12 atomic tasks.' },
+    { id: 'router', name: 'Context Router', skills: ['Routing', 'Memory'], inputs: ['Subtask'], outputs: ['Dept. dispatch'], tools: ['Internal'], example: 'Route copy tasks to Content, not Design.' },
+    { id: 'arbiter', name: 'Quality Arbiter', skills: ['Eval', 'Review'], inputs: ['Output'], outputs: ['Verdict'], tools: ['Internal'], example: 'Reject a draft with weak hooks for rewrite.' },
+    { id: 'memory', name: 'Memory Manager', skills: ['RAG', 'State'], inputs: ['Artifacts'], outputs: ['Context'], tools: ['Vector DB'], example: 'Keep run state across 30+ handoffs.' },
+  ],
+};
+
+const SCENARIOS = [
+  {
+    id: 'campaign', name: 'Launch marketing campaign',
+    path: ['orchestrator', 'strategy', 'marketing', 'content', 'design', 'production', 'analytics', 'orchestrator'],
+    timeline: [
+      { label: 'Task received', dept: 'orchestrator' },
+      { label: 'Strategy generated', dept: 'strategy' },
+      { label: 'Channel plan drafted', dept: 'marketing' },
+      { label: 'Copy & hooks written', dept: 'content' },
+      { label: 'Creatives produced', dept: 'design' },
+      { label: 'Campaign shipped', dept: 'production' },
+      { label: 'Performance reported', dept: 'analytics' },
+      { label: 'Orchestrator approved', dept: 'orchestrator' },
+    ],
+  },
+  {
+    id: 'landing', name: 'Build landing page',
+    path: ['orchestrator', 'strategy', 'content', 'design', 'development', 'production', 'analytics', 'orchestrator'],
+    timeline: [
+      { label: 'Task received', dept: 'orchestrator' },
+      { label: 'Positioning aligned', dept: 'strategy' },
+      { label: 'Copy drafted', dept: 'content' },
+      { label: 'UI designed', dept: 'design' },
+      { label: 'Frontend shipped', dept: 'development' },
+      { label: 'Page published', dept: 'production' },
+      { label: 'Traffic measured', dept: 'analytics' },
+      { label: 'Orchestrator approved', dept: 'orchestrator' },
+    ],
+  },
+  {
+    id: 'deck', name: 'Create investor deck',
+    path: ['orchestrator', 'strategy', 'content', 'design', 'production', 'orchestrator'],
+    timeline: [
+      { label: 'Task received', dept: 'orchestrator' },
+      { label: 'Story arc set', dept: 'strategy' },
+      { label: 'Slide script written', dept: 'content' },
+      { label: 'Visual system applied', dept: 'design' },
+      { label: 'Deck packaged', dept: 'production' },
+      { label: 'Orchestrator approved', dept: 'orchestrator' },
+    ],
+  },
+  {
+    id: 'metrics', name: 'Analyze product metrics',
+    path: ['orchestrator', 'analytics', 'strategy', 'ops', 'orchestrator'],
+    timeline: [
+      { label: 'Task received', dept: 'orchestrator' },
+      { label: 'Funnel inspected', dept: 'analytics' },
+      { label: 'Hypotheses framed', dept: 'strategy' },
+      { label: 'Workflows updated', dept: 'ops' },
+      { label: 'Orchestrator approved', dept: 'orchestrator' },
+    ],
+  },
+];
+
+const FLOW_EDGES = [
+  { from: 'strategy', to: 'marketing', label: 'strategy', kind: 'solid' },
+  { from: 'strategy', to: 'content', label: 'brief', kind: 'solid' },
+  { from: 'content', to: 'design', label: 'copy', kind: 'solid' },
+  { from: 'design', to: 'development', label: 'design spec', kind: 'solid' },
+  { from: 'development', to: 'production', label: 'frontend build', kind: 'solid' },
+  { from: 'marketing', to: 'production', label: 'assets', kind: 'solid' },
+  { from: 'production', to: 'analytics', label: 'release', kind: 'solid' },
+  { from: 'analytics', to: 'orchestrator', label: 'analytics', kind: 'dashed' },
+  { from: 'ops', to: 'orchestrator', label: 'ops', kind: 'thin' },
+  { from: 'orchestrator', to: 'ops', label: 'workflows', kind: 'thin' },
+];
+
+/* ============================================================
+   layout.js
+   ============================================================ */
+const CANVAS_W = 1600;
+const CANVAS_H = 920;
+const ORCH = { x: 800, y: 470 };
+const DEPT_RADIUS = 350;
+const DEPT_ANGLES_DEG = [-90, -45, 0, 45, 90, 135, 180, -135];
+const deg2rad = (d) => (d * Math.PI) / 180;
+
+function getDepartmentPositions() {
+  const out = {};
+  DEPARTMENTS.forEach((dept, i) => {
+    const a = deg2rad(DEPT_ANGLES_DEG[i]);
+    out[dept.id] = { x: ORCH.x + Math.cos(a) * DEPT_RADIUS, y: ORCH.y + Math.sin(a) * DEPT_RADIUS, angle: a };
+  });
+  return out;
+}
+function getAgentPositions(deptId, expanded) {
+  if (!expanded) return [];
+  const dept = DEPARTMENTS.find((d) => d.id === deptId);
+  const dp = getDepartmentPositions()[deptId];
+  const baseAngle = Math.atan2(dp.y - ORCH.y, dp.x - ORCH.x);
+  const count = dept.agents.length;
+  const spread = deg2rad(110);
+  const radius = 180;
+  const start = baseAngle - spread / 2;
+  const step = count > 1 ? spread / (count - 1) : 0;
+  return dept.agents.map((agent, i) => {
+    const a = start + step * i;
+    return { id: agent.id, agent, x: dp.x + Math.cos(a) * radius, y: dp.y + Math.sin(a) * radius };
+  });
+}
+function getOrchestratorAgentPositions(expanded) {
+  if (!expanded) return [];
+  const agents = ORCHESTRATOR.agents;
+  const radius = 130;
+  return agents.map((agent, i) => {
+    const a = deg2rad(-90 + (360 / agents.length) * i);
+    return { id: agent.id, agent, x: ORCH.x + Math.cos(a) * radius, y: ORCH.y + Math.sin(a) * radius };
+  });
+}
+function getArtifactPosition(deptId) {
+  const dp = getDepartmentPositions()[deptId];
+  const baseAngle = Math.atan2(dp.y - ORCH.y, dp.x - ORCH.x);
+  const a = baseAngle + deg2rad(28);
+  const r = 96;
+  return { x: dp.x + Math.cos(a) * r, y: dp.y + Math.sin(a) * r };
+}
+
+/* ============================================================
+   nodes.js — node components
+   ============================================================ */
+const { useEffect, useRef, useState, useMemo } = React;
+
+function StatusDot({ color = '#66F2A6', pulse = false }) {
+  return (
+    <span className="status-dot" style={{ background: color, boxShadow: `0 0 8px ${color}` }}>
+      {pulse && <span className="status-dot-pulse" style={{ background: color }}></span>}
+    </span>
+  );
+}
+
+function OrchestratorNode({ status, active, onClick, expanded }) {
+  return (
+    <div
+      className={`node node-orchestrator ${active ? 'is-active' : ''} ${expanded ? 'is-expanded' : ''}`}
+      style={{ left: ORCH.x, top: ORCH.y }}
+      onClick={onClick}
+    >
+      <div className="orch-ring orch-ring-1"></div>
+      <div className="orch-ring orch-ring-2"></div>
+      <div className="orch-core">
+        <div className="orch-core-pulse"></div>
+        <div className="orch-glyph">
+          <svg viewBox="0 0 40 40" width="34" height="34" aria-hidden="true">
+            <polygon points="20,3 35.6,12 35.6,28 20,37 4.4,28 4.4,12" fill="none" stroke="#4DE3FF" strokeWidth="1.2" opacity="0.9" />
+            <polygon points="20,9 30.4,15 30.4,25 20,31 9.6,25 9.6,15" fill="none" stroke="#4DE3FF" strokeWidth="1" opacity="0.5" />
+            <circle cx="20" cy="20" r="3" fill="#4DE3FF" />
+          </svg>
+        </div>
+      </div>
+      <div className="orch-label">
+        <div className="orch-eyebrow">CORE · L1</div>
+        <div className="orch-title">AI Orchestrator</div>
+        <div className="orch-status">
+          <StatusDot color="#4DE3FF" pulse /> {status}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DepartmentNode({ dept, position, expanded, dimmed, active, onToggle, scenarioStatus }) {
+  const accent = dept.accent;
+  const statusColor =
+    scenarioStatus === 'active' ? '#4DE3FF' :
+    scenarioStatus === 'done' ? '#66F2A6' :
+    scenarioStatus === 'queued' ? '#F6C85F' : accent;
+  const statusLabel =
+    scenarioStatus === 'active' ? 'active' :
+    scenarioStatus === 'done' ? 'done' :
+    scenarioStatus === 'queued' ? 'queued' : 'idle';
+  return (
+    <div
+      className={`node node-department ${expanded ? 'is-expanded' : ''} ${dimmed ? 'is-dimmed' : ''} ${active ? 'is-active' : ''}`}
+      style={{ left: position.x, top: position.y, '--accent': accent }}
+      onClick={onToggle}
+    >
+      <div className="dept-frame">
+        <div className="dept-header">
+          <div className="dept-tag" style={{ color: accent, borderColor: accent }}>{dept.short}</div>
+          <div className="dept-title">{dept.name}</div>
+          <div className="dept-toggle">{expanded ? '−' : '+'}</div>
+        </div>
+        <div className="dept-meta">
+          <div className="dept-meta-row">
+            <span className="meta-label">agents</span>
+            <span className="meta-val">{dept.agents.length}</span>
+          </div>
+          <div className="dept-meta-row">
+            <span className="meta-label">output</span>
+            <span className="meta-val">{dept.output}</span>
+          </div>
+        </div>
+        <div className="dept-bars">
+          <div className="bar-row">
+            <span className="bar-key">workload</span>
+            <div className="bar-track"><div className="bar-fill" style={{ width: `${Math.round(dept.workload * 100)}%`, background: accent }}></div></div>
+            <span className="bar-val">{Math.round(dept.workload * 100)}%</span>
+          </div>
+          <div className="bar-row">
+            <span className="bar-key">active</span>
+            <span className="bar-val mono">{dept.activeTasks} task{dept.activeTasks === 1 ? '' : 's'}</span>
+          </div>
+        </div>
+        <div className="dept-foot">
+          <StatusDot color={statusColor} pulse={scenarioStatus === 'active'} />
+          <span className="dept-status-label">{statusLabel}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AgentNode({ agent, deptAccent, position, onClick, dimmed, selected, scenarioStatus }) {
+  const statusColor =
+    scenarioStatus === 'active' ? '#4DE3FF' :
+    scenarioStatus === 'done' ? '#66F2A6' :
+    scenarioStatus === 'queued' ? '#F6C85F' : '#8E9AAA';
+  return (
+    <div
+      className={`node node-agent ${dimmed ? 'is-dimmed' : ''} ${selected ? 'is-selected' : ''}`}
+      style={{ left: position.x, top: position.y, '--accent': deptAccent }}
+      onClick={(e) => { e.stopPropagation(); onClick(agent); }}
+    >
+      <div className="agent-frame">
+        <div className="agent-dot" style={{ background: deptAccent }}></div>
+        <div className="agent-body">
+          <div className="agent-name">{agent.name}</div>
+          <div className="agent-skills">{agent.skills.slice(0, 2).join(' · ')}</div>
+        </div>
+        <StatusDot color={statusColor} pulse={scenarioStatus === 'active'} />
+      </div>
+    </div>
+  );
+}
+
+function ArtifactNode({ label, position, dimmed }) {
+  return (
+    <div className={`node node-artifact ${dimmed ? 'is-dimmed' : ''}`} style={{ left: position.x, top: position.y }}>
+      <div className="art-frame">
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+          <rect x="1" y="1" width="8" height="8" fill="none" stroke="#8E9AAA" strokeWidth="1" />
+          <line x1="3" y1="4" x2="7" y2="4" stroke="#8E9AAA" strokeWidth="1" />
+          <line x1="3" y1="6" x2="6" y2="6" stroke="#8E9AAA" strokeWidth="1" />
+        </svg>
+        <span className="art-label">{label}</span>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   graph.js — edge layer
+   ============================================================ */
+function pathBetween(a, b, curvature = 0.25) {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const nx = -dy / dist;
+  const ny = dx / dist;
+  const mx = (a.x + b.x) / 2 + nx * dist * curvature * 0.18;
+  const my = (a.y + b.y) / 2 + ny * dist * curvature * 0.18;
+  return `M ${a.x} ${a.y} Q ${mx} ${my} ${b.x} ${b.y}`;
+}
+
+function edgeStyleFor(kind, status) {
+  if (status === 'active') return { stroke: '#4DE3FF', width: 1.6, dash: null, opacity: 0.95 };
+  if (status === 'done') return { stroke: '#66F2A6', width: 1.4, dash: null, opacity: 0.9 };
+  if (status === 'review') return { stroke: '#F6C85F', width: 1.2, dash: '6 5', opacity: 0.9 };
+  if (kind === 'dashed') return { stroke: '#F6C85F', width: 1, dash: '5 5', opacity: 0.5 };
+  if (kind === 'thin') return { stroke: '#8E9AAA', width: 0.9, dash: '2 4', opacity: 0.45 };
+  return { stroke: '#4DE3FF', width: 1, dash: null, opacity: 0.5 };
+}
+
+function EdgeLabel({ a, b, text, active, dim }) {
+  const mx = (a.x + b.x) / 2;
+  const my = (a.y + b.y) / 2;
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const nx = -dy / dist;
+  const ny = dx / dist;
+  const lx = mx + nx * 10;
+  const ly = my + ny * 10;
+  const w = text.length * 6.2 + 12;
+  const h = 14;
+  return (
+    <g pointerEvents="none" opacity={dim ? 0.55 : 1}>
+      <rect x={lx - w / 2} y={ly - h / 2} width={w} height={h} rx="2"
+            fill="#0A0E14" stroke={active ? '#4DE3FF' : 'rgba(255,255,255,0.1)'} strokeWidth="0.8" />
+      <text x={lx} y={ly + 3.6} textAnchor="middle" fontFamily="'JetBrains Mono', monospace"
+            fontSize="8.5" fill={active ? '#4DE3FF' : '#8E9AAA'} letterSpacing="0.04em">
+        {text.toUpperCase()}
+      </text>
+    </g>
+  );
+}
+
+function Pulse({ a, b }) {
+  const d = pathBetween(a, b);
+  return (
+    <g>
+      <circle r="3.5" fill="#4DE3FF">
+        <animateMotion dur="1.6s" repeatCount="indefinite" path={d} />
+        <animate attributeName="opacity" values="0;1;1;0" dur="1.6s" repeatCount="indefinite" />
+      </circle>
+      <circle r="6" fill="#4DE3FF" opacity="0.25">
+        <animateMotion dur="1.6s" repeatCount="indefinite" path={d} />
+      </circle>
+    </g>
+  );
+}
+
+function EdgeLayer({ deptPositions, scenarioState, hoverEdge, setHoverEdge }) {
+  const orch = ORCH;
+  const allEdges = [];
+  DEPARTMENTS.forEach((d) => {
+    allEdges.push({ key: `orch-${d.id}`, from: 'orchestrator', to: d.id, a: orch, b: deptPositions[d.id], kind: 'hier', label: null });
+  });
+  FLOW_EDGES.forEach((e) => {
+    const a = e.from === 'orchestrator' ? orch : deptPositions[e.from];
+    const b = e.to === 'orchestrator' ? orch : deptPositions[e.to];
+    allEdges.push({ key: `flow-${e.from}-${e.to}`, from: e.from, to: e.to, a, b, kind: e.kind, label: e.label });
+  });
+
+  const scenarioPath = scenarioState.path || [];
+  const stepIndex = scenarioState.stepIndex;
+  const edgeStatus = {};
+  for (let i = 0; i < scenarioPath.length - 1; i++) {
+    const k = `${scenarioPath[i]}->${scenarioPath[i + 1]}`;
+    if (i < stepIndex) edgeStatus[k] = 'done';
+    else if (i === stepIndex) edgeStatus[k] = 'active';
+  }
+
+  return (
+    <svg className="edge-layer" viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`} preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <filter id="edge-glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="2" result="b" />
+          <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+        <marker id="arrow-cyan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M 0 1 L 9 5 L 0 9 z" fill="#4DE3FF" opacity="0.9" />
+        </marker>
+        <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M 0 1 L 9 5 L 0 9 z" fill="#66F2A6" opacity="0.9" />
+        </marker>
+        <marker id="arrow-faint" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto-start-reverse">
+          <path d="M 0 1 L 9 5 L 0 9 z" fill="#4DE3FF" opacity="0.5" />
+        </marker>
+      </defs>
+
+      {allEdges.map((e) => {
+        const statusKey = `${e.from}->${e.to}`;
+        const status = edgeStatus[statusKey];
+        const isHover = hoverEdge && hoverEdge.key === e.key;
+        const style = edgeStyleFor(e.kind, status);
+        const d = pathBetween(e.a, e.b);
+        const hierStyle = { stroke: 'rgba(142,154,170,0.2)', width: 0.7, dash: '2 5', opacity: 1 };
+        const useStyle = e.kind === 'hier' ? (status ? style : hierStyle) : style;
+        const marker = status === 'done' ? 'url(#arrow-green)' :
+                       status === 'active' ? 'url(#arrow-cyan)' :
+                       (e.kind === 'hier' ? null : 'url(#arrow-faint)');
+        return (
+          <g key={e.key}
+             onMouseEnter={() => setHoverEdge({ key: e.key, from: e.from, to: e.to, label: e.label })}
+             onMouseLeave={() => setHoverEdge(null)}>
+            <path d={d} fill="none" stroke={useStyle.stroke}
+                  strokeWidth={(isHover ? useStyle.width + 1.2 : useStyle.width)}
+                  strokeDasharray={useStyle.dash || undefined}
+                  opacity={isHover ? 1 : useStyle.opacity}
+                  markerEnd={marker || undefined}
+                  filter={status === 'active' || isHover ? 'url(#edge-glow)' : undefined}
+                  className={status === 'active' ? 'edge-flow-active' : ''} />
+            <path d={d} fill="none" stroke="transparent" strokeWidth="14" pointerEvents="stroke" />
+            {e.label && (
+              <EdgeLabel a={e.a} b={e.b} text={e.label} active={status === 'active'} dim={!status && !isHover} />
+            )}
+          </g>
+        );
+      })}
+
+      {scenarioPath.length > 0 && stepIndex >= 0 && stepIndex < scenarioPath.length - 1 && (
+        <Pulse a={scenarioPath[stepIndex] === 'orchestrator' ? orch : deptPositions[scenarioPath[stepIndex]]}
+               b={scenarioPath[stepIndex + 1] === 'orchestrator' ? orch : deptPositions[scenarioPath[stepIndex + 1]]} />
+      )}
+    </svg>
+  );
+}
+
+/* ============================================================
+   panels.js — Inspector, Scenarios, Timeline, TopBar, Legend, HoverHud
+   ============================================================ */
+function Section({ title, children }) {
+  return (
+    <div className="insp-section">
+      <div className="insp-section-title">{title}</div>
+      {children}
+    </div>
+  );
+}
+
+function Inspector({ selection, onClose }) {
+  if (!selection) {
+    return (
+      <aside className="inspector inspector-empty">
+        <div className="insp-eyebrow-mono dim">AGENT INSPECTOR · IDLE</div>
+        <div className="empty-hint">
+          <div className="empty-hint-title">Select an agent</div>
+          <div className="empty-hint-sub">
+            Click any department card to expand its specialists.
+            Click a specialist to inspect role, inputs, outputs, tools and an example task.
+          </div>
+        </div>
+        <div className="empty-help">
+          <div className="help-row"><kbd>+</kbd><span>expand / collapse a department</span></div>
+          <div className="help-row"><kbd>▶</kbd><span>play a scenario, watch the route light up</span></div>
+          <div className="help-row"><kbd>hover</kbd><span>any edge to see the artifact passed</span></div>
+        </div>
+      </aside>
+    );
+  }
+  const { agent, deptName, deptAccent } = selection;
+  return (
+    <aside className="inspector">
+      <div className="insp-head">
+        <div className="insp-eyebrow">
+          <span className="insp-dept-chip" style={{ color: deptAccent, borderColor: deptAccent }}>{deptName}</span>
+          <span className="insp-eyebrow-spacer">/</span>
+          <span className="insp-eyebrow-mono">AGENT INSPECTOR</span>
+        </div>
+        <button className="insp-close" onClick={onClose} aria-label="Close">×</button>
+      </div>
+      <div className="insp-title">{agent.name}</div>
+      <div className="insp-status-row">
+        <StatusDot color="#66F2A6" /> <span className="insp-status">active</span>
+        <span className="insp-sep">·</span>
+        <span className="insp-mono">avg latency 1.2s</span>
+        <span className="insp-sep">·</span>
+        <span className="insp-mono">queue 2</span>
+      </div>
+      <Section title="Responsibilities">
+        <ul className="bullets">{agent.skills.map((s, i) => <li key={i}>{s}</li>)}</ul>
+      </Section>
+      <div className="insp-grid">
+        <Section title="Inputs">
+          <div className="chip-row">{agent.inputs.map((s, i) => <span key={i} className="chip chip-in">{s}</span>)}</div>
+        </Section>
+        <Section title="Outputs">
+          <div className="chip-row">{agent.outputs.map((s, i) => <span key={i} className="chip chip-out">{s}</span>)}</div>
+        </Section>
+      </div>
+      <Section title="Tools">
+        <div className="chip-row">{agent.tools.map((s, i) => <span key={i} className="chip chip-tool">{s}</span>)}</div>
+      </Section>
+      <Section title="Example task">
+        <p className="insp-example">{agent.example}</p>
+      </Section>
+      <div className="insp-footer">
+        <span className="insp-mono dim">SESSION · 0xA4F2 · live</span>
+        <span className="insp-mono dim">runs today · 38</span>
+      </div>
+    </aside>
+  );
+}
+
+function ScenariosBar({ scenarios, activeId, isPlaying, onSelect, onPlay, onReset }) {
+  return (
+    <div className="scenarios-bar">
+      <div className="sc-eyebrow">SCENARIOS</div>
+      <div className="sc-list">
+        {scenarios.map((s, i) => (
+          <button key={s.id} className={`sc-btn ${activeId === s.id ? 'is-active' : ''}`} onClick={() => onSelect(s.id)}>
+            <span className="sc-num">{String(i + 1).padStart(2, '0')}</span>
+            <span className="sc-name">{s.name}</span>
+          </button>
+        ))}
+      </div>
+      <div className="sc-actions">
+        <button className="sc-play" onClick={onPlay} disabled={!activeId}>
+          {isPlaying ? (<><span className="sc-icon">▮▮</span><span>Pause</span></>) : (<><span className="sc-icon">▶</span><span>Play</span></>)}
+        </button>
+        <button className="sc-reset" onClick={onReset}>Reset</button>
+      </div>
+    </div>
+  );
+}
+
+function Timeline({ scenario, stepIndex }) {
+  if (!scenario) return null;
+  const steps = scenario.timeline;
+  return (
+    <div className="timeline">
+      <div className="tl-head">
+        <span className="tl-eyebrow">RUN TIMELINE</span>
+        <span className="tl-mono">{scenario.name}</span>
+        <span className="tl-mono tl-dim">
+          {stepIndex < 0 ? 'idle' : stepIndex >= steps.length ? 'complete' : `step ${stepIndex + 1} / ${steps.length}`}
+        </span>
+      </div>
+      <div className="tl-track">
+        {steps.map((step, i) => {
+          const state = i < stepIndex ? 'done' : i === stepIndex ? 'active' : 'queued';
+          return (
+            <div key={i} className={`tl-step is-${state}`}>
+              <div className="tl-dotline">
+                <div className="tl-dot"></div>
+                {i < steps.length - 1 && <div className="tl-line"></div>}
+              </div>
+              <div className="tl-step-body">
+                <div className="tl-step-num">T+{String(i).padStart(2, '0')}</div>
+                <div className="tl-step-label">{step.label}</div>
+                <div className="tl-step-dept">{step.dept}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function HoverHud({ edge }) {
+  if (!edge) return null;
+  const labelMap = { orchestrator: 'AI Orchestrator' };
+  const depts = DEPARTMENTS.reduce((a, d) => (a[d.id] = d.name, a), {});
+  const nameOf = (id) => labelMap[id] || depts[id] || id;
+  return (
+    <div className="hover-hud">
+      <span className="hh-mono">EDGE</span>
+      <span className="hh-from">{nameOf(edge.from)}</span>
+      <span className="hh-arr">→</span>
+      <span className="hh-to">{nameOf(edge.to)}</span>
+      {edge.label && <><span className="hh-sep">/</span><span className="hh-art">artifact: {edge.label}</span></>}
+    </div>
+  );
+}
+
+function Pill({ label, value, tone }) {
+  return (
+    <div className={`pill ${tone ? `pill-${tone}` : ''}`}>
+      <span className="pill-label">{label}</span>
+      <span className="pill-value mono">{value}</span>
+    </div>
+  );
+}
+
+function TopBar({ clock }) {
+  return (
+    <div className="topbar">
+      <div className="tb-left">
+        <div className="tb-mark">
+          <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
+            <polygon points="11,2 19,7 19,15 11,20 3,15 3,7" fill="none" stroke="#4DE3FF" strokeWidth="1.2" />
+            <circle cx="11" cy="11" r="2.2" fill="#4DE3FF" />
+          </svg>
+        </div>
+        <div className="tb-titles">
+          <div className="tb-title">Multi-Agent Operations</div>
+          <div className="tb-sub">orchestration map · v0.4.2 · live</div>
+        </div>
+      </div>
+      <div className="tb-mid">
+        <Pill label="agents" value="60" />
+        <Pill label="departments" value="8" />
+        <Pill label="active tasks" value="34" />
+        <Pill label="queue" value="12" />
+        <Pill label="success 24h" value="98.4%" tone="green" />
+      </div>
+      <div className="tb-right">
+        <div className="tb-time mono">{clock}</div>
+        <div className="tb-led"><StatusDot color="#66F2A6" pulse /> SYSTEM NOMINAL</div>
+      </div>
+    </div>
+  );
+}
+
+function LegendRow({ color, label, dashed, thin }) {
+  return (
+    <div className="legend-row">
+      <svg width="34" height="6" viewBox="0 0 34 6">
+        <line x1="0" y1="3" x2="34" y2="3" stroke={color} strokeWidth={thin ? 0.8 : 1.4}
+              strokeDasharray={dashed ? '4 3' : thin ? '2 4' : undefined} />
+      </svg>
+      <span>{label}</span>
+    </div>
+  );
+}
+function Legend() {
+  return (
+    <div className="legend">
+      <div className="legend-title">LEGEND</div>
+      <LegendRow color="#4DE3FF" label="task handoff" />
+      <LegendRow color="#66F2A6" label="completed" />
+      <LegendRow color="#F6C85F" label="review / feedback" dashed />
+      <LegendRow color="#8E9AAA" label="hierarchy" thin />
+    </div>
+  );
+}
+
+/* ============================================================
+   app.js — top-level
+   ============================================================ */
+function App() {
+  const [expandedDepts, setExpandedDepts] = useState(new Set(['design']));
+  const [orchExpanded, setOrchExpanded] = useState(false);
+  const [selection, setSelection] = useState(null);
+  const [activeScenarioId, setActiveScenarioId] = useState('campaign');
+  const [stepIndex, setStepIndex] = useState(-1);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [hoverEdge, setHoverEdge] = useState(null);
+  const [clock, setClock] = useState('02:14:38 UTC');
+
+  // synthetic clock for cinematic feel
+  useEffect(() => {
+    let s = 14 * 60 + 38;
+    const t = setInterval(() => {
+      s = (s + 1) % (24 * 60 * 60);
+      const h = String(Math.floor(s / 3600) + 2).padStart(2, '0');
+      const m = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+      const ss = String(s % 60).padStart(2, '0');
+      setClock(`${h}:${m}:${ss} UTC`);
+    }, 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const deptPositions = useMemo(() => getDepartmentPositions(), []);
+  const scenarios = SCENARIOS;
+  const activeScenario = scenarios.find((s) => s.id === activeScenarioId);
+
+  useEffect(() => {
+    if (!isPlaying || !activeScenario) return;
+    const steps = activeScenario.timeline.length;
+    if (stepIndex >= steps) { setIsPlaying(false); return; }
+    const t = setTimeout(() => setStepIndex((s) => s + 1), 1500);
+    return () => clearTimeout(t);
+  }, [isPlaying, stepIndex, activeScenarioId]);
+
+  function toggleDept(id) {
+    setExpandedDepts((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+  function selectAgent(agent, deptName, deptAccent) { setSelection({ agent, deptName, deptAccent }); }
+  function onSelectScenario(id) { setActiveScenarioId(id); setStepIndex(-1); setIsPlaying(false); }
+  function onPlay() {
+    if (!activeScenario) return;
+    if (stepIndex >= activeScenario.timeline.length - 1) setStepIndex(-1);
+    setIsPlaying((p) => !p);
+    if (stepIndex < 0) setStepIndex(0);
+  }
+  function onReset() { setStepIndex(-1); setIsPlaying(false); }
+
+  function deptScenarioStatus(deptId) {
+    if (!activeScenario || stepIndex < 0) return null;
+    const path = activeScenario.path;
+    if (!path.includes(deptId)) return null;
+    if (stepIndex >= activeScenario.timeline.length) return 'done';
+    if (path[stepIndex] === deptId) return 'active';
+    for (let i = 0; i < stepIndex; i++) if (path[i] === deptId) return 'done';
+    for (let i = stepIndex + 1; i < path.length; i++) if (path[i] === deptId) return 'queued';
+    return null;
+  }
+
+  const anyExpanded = expandedDepts.size > 0 || orchExpanded;
+  const focused = selection ? selection.agent.id : null;
+
+  const wrapRef = useRef(null);
+  const [scale, setScale] = useState(1);
+  useEffect(() => {
+    const update = () => {
+      if (!wrapRef.current) return;
+      const r = wrapRef.current.getBoundingClientRect();
+      const sx = r.width / CANVAS_W;
+      const sy = r.height / CANVAS_H;
+      setScale(Math.min(sx, sy, 1.1));
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
+  const orchStatus = isPlaying ? 'Routing task' : stepIndex >= 0 ? 'Checking quality' : 'Awaiting input';
+
+  return (
+    <div className="app">
+      <TopBar clock={clock} />
+      <div className="stage">
+        <div className="canvas-wrap" ref={wrapRef}>
+          <div className="canvas-bg-grid"></div>
+          <div className="canvas-bg-noise"></div>
+          <div className="canvas-bg-vignette"></div>
+
+          <div className="canvas"
+               style={{ width: CANVAS_W, height: CANVAS_H,
+                        transform: `translate(-50%, -50%) scale(${scale})` }}>
+            <EdgeLayer
+              deptPositions={deptPositions}
+              scenarioState={{ path: activeScenario?.path || [], stepIndex }}
+              hoverEdge={hoverEdge}
+              setHoverEdge={setHoverEdge}
+            />
+
+            {DEPARTMENTS.map((dept) => {
+              const pos = deptPositions[dept.id];
+              const expanded = expandedDepts.has(dept.id);
+              const dimmed = (anyExpanded && !expanded && expandedDepts.size > 0);
+              const sStatus = deptScenarioStatus(dept.id);
+              return (
+                <React.Fragment key={dept.id}>
+                  <DepartmentNode dept={dept} position={pos} expanded={expanded} dimmed={dimmed}
+                                  active={sStatus === 'active'} onToggle={() => toggleDept(dept.id)}
+                                  scenarioStatus={sStatus} />
+                  {expanded && getAgentPositions(dept.id, true).map((ap) => (
+                    <AgentNode key={ap.id} agent={ap.agent} deptAccent={dept.accent}
+                               position={{ x: ap.x, y: ap.y }}
+                               onClick={(a) => selectAgent(a, dept.name, dept.accent)}
+                               dimmed={false} selected={focused === ap.id} scenarioStatus={sStatus} />
+                  ))}
+                  {expanded && (
+                    <svg className="agent-connectors" viewBox={`0 0 ${CANVAS_W} ${CANVAS_H}`} preserveAspectRatio="xMidYMid meet">
+                      {getAgentPositions(dept.id, true).map((ap) => (
+                        <line key={ap.id} x1={pos.x} y1={pos.y} x2={ap.x} y2={ap.y}
+                              stroke={dept.accent} strokeOpacity="0.35" strokeWidth="0.8" strokeDasharray="2 4" />
+                      ))}
+                    </svg>
+                  )}
+                  <ArtifactNode label={dept.output} position={getArtifactPosition(dept.id)} dimmed={dimmed} />
+                </React.Fragment>
+              );
+            })}
+
+            {orchExpanded && getOrchestratorAgentPositions(true).map((ap) => (
+              <AgentNode key={ap.id} agent={ap.agent} deptAccent={'#4DE3FF'}
+                         position={{ x: ap.x, y: ap.y }}
+                         onClick={(a) => selectAgent(a, 'AI Orchestrator', '#4DE3FF')}
+                         dimmed={false} selected={focused === ap.id} scenarioStatus={isPlaying ? 'active' : null} />
+            ))}
+
+            <OrchestratorNode status={orchStatus} active={isPlaying || stepIndex >= 0}
+                              expanded={orchExpanded} onClick={() => setOrchExpanded((v) => !v)} />
+          </div>
+
+          <Legend />
+          <HoverHud edge={hoverEdge} />
+        </div>
+
+        <Inspector selection={selection} onClose={() => setSelection(null)} />
+      </div>
+
+      <div className="bottom-stack">
+        <ScenariosBar scenarios={scenarios} activeId={activeScenarioId} isPlaying={isPlaying}
+                      onSelect={onSelectScenario} onPlay={onPlay} onReset={onReset} />
+        <Timeline scenario={activeScenario} stepIndex={stepIndex} />
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

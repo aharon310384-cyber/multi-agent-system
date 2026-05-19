@@ -5,8 +5,9 @@ const cors = require('cors');
 require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
 
 const { DEPARTMENTS, ORCHESTRATOR, SCENARIOS, FLOW_EDGES, ROUTING_RULES, routeTask } = require('./data');
-const { buildAgentSystemPrompt, ORCHESTRATOR_PROMPT } = require('./agent-prompt');
+const { buildAgentSystemPrompt, buildOrchestratorPrompt } = require('./agent-prompt');
 const { resolveModel, getTaskType, getImageModel, DEFAULT_MODELS } = require('./model-router');
+const { getToolsForAgent, hasTools, executeTool, TOOLS_PROMPT_BLOCK } = require('./tools');
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -26,6 +27,9 @@ app.get('/api/health', (_req, res) => {
       configured: Boolean(OPENROUTER_API_KEY),
       defaults: DEFAULT_MODELS,
       imageModel: getImageModel(),
+    },
+    tools: {
+      firecrawl: Boolean(process.env.FIRECRAWL_API_KEY),
     },
   });
 });
@@ -87,6 +91,89 @@ function resolveAgent(agentId) {
   return null;
 }
 
+async function runChatTurn({ model, messages, taskType, tools, sendEvent }) {
+  const body = {
+    model,
+    messages,
+    stream: true,
+    temperature: taskType === 'dev' ? 0.3 : 0.6,
+    provider: {
+      order: ['Fireworks', 'Together', 'Novita', 'Hyperbolic'],
+      allow_fallbacks: true,
+      ignore: ['DeepSeek'],
+    },
+  };
+  if (tools && tools.length) {
+    body.tools = tools;
+    body.tool_choice = 'auto';
+  }
+
+  const upstream = await fetch(OPENROUTER_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'http://localhost',
+      'X-Title': 'Multi-Agent Orchestrator',
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!upstream.ok || !upstream.body) {
+    const errBody = await upstream.text().catch(() => '');
+    return { error: { status: upstream.status, body: errBody.slice(0, 800) } };
+  }
+
+  const reader = upstream.body.getReader();
+  const decoder = new TextDecoder('utf-8');
+  let buffer = '';
+  let content = '';
+  const toolCalls = [];
+  let finishReason = null;
+
+  outer: while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.startsWith('data:')) continue;
+      const payload = trimmed.slice(5).trim();
+      if (payload === '[DONE]') break outer;
+      let json;
+      try { json = JSON.parse(payload); } catch { continue; }
+      const choice = json.choices?.[0];
+      if (!choice) continue;
+      const delta = choice.delta || {};
+      if (typeof delta.content === 'string' && delta.content.length) {
+        content += delta.content;
+        sendEvent('delta', { content: delta.content });
+      }
+      if (Array.isArray(delta.tool_calls)) {
+        for (const tc of delta.tool_calls) {
+          const idx = typeof tc.index === 'number' ? tc.index : toolCalls.length;
+          if (!toolCalls[idx]) {
+            toolCalls[idx] = { id: tc.id || '', type: 'function', function: { name: '', arguments: '' } };
+          }
+          const slot = toolCalls[idx];
+          if (tc.id) slot.id = tc.id;
+          if (tc.function?.name) slot.function.name = tc.function.name;
+          if (typeof tc.function?.arguments === 'string') {
+            slot.function.arguments += tc.function.arguments;
+          }
+        }
+      }
+      if (choice.finish_reason) finishReason = choice.finish_reason;
+    }
+  }
+
+  return { content, toolCalls: toolCalls.filter(Boolean), finishReason };
+}
+
 app.post('/api/chat', async (req, res) => {
   if (!OPENROUTER_API_KEY) {
     return res.status(500).json({ error: 'OPENROUTER_API_KEY не задан в .env' });
@@ -110,9 +197,12 @@ app.post('/api/chat', async (req, res) => {
   const resolved = resolveAgent(agentId);
   if (!resolved) return res.status(404).json({ error: 'agent_not_found' });
 
+  const agentTools = process.env.FIRECRAWL_API_KEY ? getToolsForAgent(resolved.agent.id) : null;
+  const toolsBlock = agentTools ? TOOLS_PROMPT_BLOCK : '';
+
   const systemPrompt = resolved.isOrchestrator
-    ? ORCHESTRATOR_PROMPT
-    : buildAgentSystemPrompt(resolved.agent, resolved.dept);
+    ? buildOrchestratorPrompt({ toolsBlock })
+    : buildAgentSystemPrompt(resolved.agent, resolved.dept, { toolsBlock });
 
   const model = modelOverride || resolveModel(resolved.agent.id);
   const taskType = getTaskType(resolved.agent.id);
@@ -147,69 +237,74 @@ app.post('/api/chat', async (req, res) => {
     okrHint: resolved.agent.okr?.[0]?.krs?.[0] || null,
     model,
     taskType,
+    toolsEnabled: Boolean(agentTools),
   });
 
+  const MAX_TOOL_ITER = 5;
   try {
-    const upstream = await fetch(OPENROUTER_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'http://localhost',
-        'X-Title': 'Multi-Agent Orchestrator',
-      },
-      body: JSON.stringify({
+    for (let iter = 0; iter < MAX_TOOL_ITER + 1; iter++) {
+      const turn = await runChatTurn({
         model,
         messages: chatMessages,
-        stream: true,
-        temperature: taskType === 'dev' ? 0.3 : 0.6,
-        provider: {
-          order: ['Fireworks', 'Together', 'Novita', 'Hyperbolic'],
-          allow_fallbacks: true,
-          ignore: ['DeepSeek'],
-        },
-      }),
-    });
+        taskType,
+        tools: agentTools,
+        sendEvent,
+      });
 
-    if (!upstream.ok || !upstream.body) {
-      const errBody = await upstream.text().catch(() => '');
-      sendEvent('error', { status: upstream.status, body: errBody.slice(0, 800), model });
-      return res.end();
-    }
+      if (turn.error) {
+        sendEvent('error', { ...turn.error, model });
+        return res.end();
+      }
 
-    const reader = upstream.body.getReader();
-    const decoder = new TextDecoder('utf-8');
-    let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || !trimmed.startsWith('data:')) continue;
-        const payload = trimmed.slice(5).trim();
-        if (payload === '[DONE]') {
-          sendEvent('done', {});
+      if (turn.finishReason === 'tool_calls' && turn.toolCalls.length) {
+        if (iter >= MAX_TOOL_ITER) {
+          sendEvent('error', { message: `tool-loop превысил лимит ${MAX_TOOL_ITER} итераций`, model });
           return res.end();
         }
-        try {
-          const json = JSON.parse(payload);
-          const delta = json.choices?.[0]?.delta?.content;
-          if (typeof delta === 'string' && delta.length) {
-            sendEvent('delta', { content: delta });
+        chatMessages.push({
+          role: 'assistant',
+          content: turn.content || '',
+          tool_calls: turn.toolCalls.map((tc) => ({
+            id: tc.id,
+            type: 'function',
+            function: { name: tc.function.name, arguments: tc.function.arguments || '{}' },
+          })),
+        });
+
+        for (const tc of turn.toolCalls) {
+          const name = tc.function.name;
+          let args = {};
+          try { args = tc.function.arguments ? JSON.parse(tc.function.arguments) : {}; } catch {}
+          sendEvent('tool_call', { id: tc.id, name, args });
+          let result;
+          let isError = false;
+          try {
+            result = await executeTool(name, args);
+          } catch (err) {
+            isError = true;
+            result = { error: err?.message || String(err), code: err?.code || null };
+            sendEvent('tool_error', { id: tc.id, name, message: result.error });
           }
-        } catch {
-          // keepalive lines
+          if (!isError) {
+            const summary = name === 'firecrawl_search'
+              ? { query: result.query, count: result.results?.length || 0 }
+              : name === 'firecrawl_scrape'
+                ? { url: result.url, title: result.title, chars: result.markdown?.length || 0 }
+                : {};
+            sendEvent('tool_result', { id: tc.id, name, summary });
+          }
+          chatMessages.push({
+            role: 'tool',
+            tool_call_id: tc.id,
+            content: JSON.stringify(result),
+          });
         }
+        continue;
       }
+
+      sendEvent('done', {});
+      return res.end();
     }
-    sendEvent('done', {});
-    res.end();
   } catch (err) {
     sendEvent('error', { message: err?.message || String(err), model });
     res.end();

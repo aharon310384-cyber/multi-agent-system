@@ -163,6 +163,11 @@ app.post('/api/chat', async (req, res) => {
         messages: chatMessages,
         stream: true,
         temperature: taskType === 'dev' ? 0.3 : 0.6,
+        provider: {
+          order: ['Fireworks', 'Together', 'Novita', 'Hyperbolic'],
+          allow_fallbacks: true,
+          ignore: ['DeepSeek'],
+        },
       }),
     });
 

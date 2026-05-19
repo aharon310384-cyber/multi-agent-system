@@ -28,11 +28,11 @@ const TASK_TYPE = {
   ba: 'orchestration',
   osint: 'orchestration',
 
-  // Дефолт (designer, sales, account) → GPT-5.5
+  // Дефолт (designer, sales, account) → DeepSeek V3 (deepseek-chat)
 };
 
 const DEFAULT_MODELS = {
-  default: 'openai/gpt-5.5',
+  default: 'deepseek/deepseek-chat',
   dev: 'anthropic/claude-opus-4.7',
   marketing: 'google/gemini-2.5-flash',
   orchestration: 'minimax/minimax-m2.7',

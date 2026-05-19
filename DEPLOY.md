@@ -30,7 +30,7 @@
 | Имя                              | Значение                            | Обязательно |
 |----------------------------------|-------------------------------------|-------------|
 | `OPENROUTER_API_KEY`             | ключ с <https://openrouter.ai/keys> | **Да**      |
-| `OPENROUTER_MODEL_DEFAULT`       | `openai/gpt-5.5`                    | Нет         |
+| `OPENROUTER_MODEL_DEFAULT`       | `deepseek/deepseek-chat`            | Нет         |
 | `OPENROUTER_MODEL_DEV`           | `anthropic/claude-opus-4.7`         | Нет         |
 | `OPENROUTER_MODEL_MARKETING`     | `google/gemini-2.5-flash`           | Нет         |
 | `OPENROUTER_MODEL_ORCHESTRATION` | `minimax/minimax-m2`                | Нет         |

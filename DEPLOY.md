@@ -35,7 +35,7 @@
 | `OPENROUTER_MODEL_MARKETING`     | `google/gemini-2.5-flash`           | Нет         |
 | `OPENROUTER_MODEL_ORCHESTRATION` | `minimax/minimax-m2`                | Нет         |
 | `OPENROUTER_MODEL_IMAGE`         | `google/gemini-2.5-flash-image-preview` | Нет     |
-| `FIRECRAWL_API_KEY`              | ключ с <https://www.firecrawl.dev/app/api-keys> | Нет (без него агенты chief/маркетинг работают без веб-доступа) |
+| `FIRECRAWL_API_KEY`              | ключ с <https://www.firecrawl.dev/app/api-keys> | Нет (без него агенты chief/маркетинг/ОСИНТ работают без веб-доступа) |
 | `PORT`                           | `3000` (если Timeweb не пробрасывает свой) | Зависит от платформы |
 
 Дефолты моделей зашиты в `Backend/model-router.js` — если не задавать override, он подставит их сам.

@@ -50,6 +50,7 @@ const TOOLS_ENABLED_AGENTS = new Set([
   'seo',
   'smm',
   'analyst',
+  'osint',
 ]);
 
 function hasTools(agentId) {

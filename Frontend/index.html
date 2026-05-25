@@ -556,11 +556,11 @@ function HistorySidebar({ sessions, activeId, onSelect, onNew, onDelete }) {
   );
 }
 
-/* ============ Agents sidebar ============ */
-function AgentsSidebar({ activeAgentId, onPick }) {
+/* ============ Agents sidebar (read-only — общение только через оркестратора) ============ */
+function AgentsSidebar() {
   return (
     <div className="col col-agents">
-      <div className="col-head"><span>Агенты</span></div>
+      <div className="col-head"><span>Команда</span><span className="mono" style={{fontSize: 10, color: 'var(--text-3)'}}>через оркестратора</span></div>
       <div className="col-body">
         <div className="dept-block">
           <div className="dept-head">
@@ -568,13 +568,9 @@ function AgentsSidebar({ activeAgentId, onPick }) {
             <span>Оркестрация</span>
           </div>
           {ORCHESTRATOR.agents.slice(0, 1).map((a) => (
-            <button
-              key={a.id}
-              className={`agent-btn ${activeAgentId === a.id || (!activeAgentId && a.id === 'chief') ? 'is-active' : ''}`}
-              onClick={() => onPick(a.id)}
-            >
+            <div key={a.id} className="agent-btn is-active" style={{cursor: 'default'}}>
               <span className="ab-name">{a.name}</span>
-            </button>
+            </div>
           ))}
         </div>
         {DEPARTMENTS.map((d) => (
@@ -584,15 +580,10 @@ function AgentsSidebar({ activeAgentId, onPick }) {
               <span>{d.name}</span>
             </div>
             {d.agents.map((a) => (
-              <button
-                key={a.id}
-                className={`agent-btn ${activeAgentId === a.id ? 'is-active' : ''}`}
-                onClick={() => onPick(a.id)}
-                title={a.example}
-              >
+              <div key={a.id} className="agent-btn" style={{cursor: 'default', opacity: 0.75}} title={a.example}>
                 <span className="ab-name">{a.name}</span>
                 <span className="ab-skill">{(a.skills?.[0] || '').slice(0, 12)}</span>
-              </button>
+              </div>
             ))}
           </div>
         ))}
@@ -617,25 +608,37 @@ function Message({ msg }) {
       {Array.isArray(msg.tools) && msg.tools.length > 0 && (
         <div className="msg-tools">
           {msg.tools.map((t) => {
-            const icon = t.name === 'firecrawl_search' ? '🔍' : t.name === 'firecrawl_scrape' ? '📄' : '🛠';
-            const arg = t.name === 'firecrawl_search'
-              ? (t.args?.query || '')
-              : t.name === 'firecrawl_scrape'
-                ? (t.args?.url || '')
-                : JSON.stringify(t.args || {});
+            const isDelegate = t.name === 'delegate';
+            const icon = isDelegate
+              ? '🤖'
+              : t.name === 'firecrawl_search' ? '🔍'
+              : t.name === 'firecrawl_scrape' ? '📄'
+              : t.name === 'brave_search' ? '🦁'
+              : t.name === 'brave_news' ? '📰'
+              : '🛠';
+            const displayName = isDelegate
+              ? (t.meta?.agentName || t.summary?.agentName || t.args?.agent_id || 'агент')
+              : t.name;
+            const arg = isDelegate
+              ? (t.args?.task || '')
+              : t.name === 'firecrawl_search' ? (t.args?.query || '')
+              : t.name === 'firecrawl_scrape' ? (t.args?.url || '')
+              : (t.args?.query || JSON.stringify(t.args || {}));
             const statusLabel = t.status === 'running'
-              ? 'running'
+              ? (isDelegate ? 'работает…' : 'running')
               : t.status === 'error'
                 ? 'error'
-                : t.name === 'firecrawl_search' && typeof t.summary?.count === 'number'
-                  ? `${t.summary.count} hits`
-                  : t.name === 'firecrawl_scrape' && typeof t.summary?.chars === 'number'
-                    ? `${t.summary.chars} chars`
-                    : 'done';
+                : isDelegate && typeof t.summary?.chars === 'number'
+                  ? `готово · ${t.summary.chars} зн.`
+                  : t.name === 'firecrawl_search' && typeof t.summary?.count === 'number'
+                    ? `${t.summary.count} hits`
+                    : t.name === 'firecrawl_scrape' && typeof t.summary?.chars === 'number'
+                      ? `${t.summary.chars} chars`
+                      : 'done';
             return (
-              <div key={t.id} className={`tool-chip is-${t.status}`} title={t.error || arg}>
+              <div key={t.id} className={`tool-chip is-${t.status} ${isDelegate ? 'is-delegate' : ''}`} title={t.error || arg}>
                 <span>{icon}</span>
-                <span className="tool-name">{t.name}</span>
+                <span className="tool-name">{isDelegate ? `делегат → ${displayName}` : displayName}</span>
                 <span className="tool-arg">{arg}</span>
                 <span className="tool-status">{statusLabel}</span>
               </div>
@@ -818,7 +821,7 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: history,
-          agentId: session.agentId || activeAgentId || null,
+          agentId: 'chief',
         }),
       });
       if (!res.ok || !res.body) {
@@ -868,7 +871,7 @@ function App() {
           } else if (event === 'tool_call') {
             updateLastBotMessage(sessionId, (prev) => {
               const tools = Array.isArray(prev.tools) ? prev.tools.slice() : [];
-              tools.push({ id: json.id, name: json.name, args: json.args || {}, status: 'running' });
+              tools.push({ id: json.id, name: json.name, args: json.args || {}, meta: json.meta || {}, status: 'running' });
               return { ...prev, tools };
             });
           } else if (event === 'tool_result') {
@@ -1037,7 +1040,7 @@ function App() {
             </div>
           </div>
         </div>
-        <AgentsSidebar activeAgentId={currentAgentId} onPick={handlePickAgent} />
+        <AgentsSidebar />
       </div>
     </div>
   );

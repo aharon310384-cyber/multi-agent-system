@@ -1,7 +1,37 @@
 const firecrawl = require('./firecrawl');
 const brave = require('./brave');
+const { DEPARTMENTS } = require('./data');
 
-const TOOL_DEFS = [
+const DELEGATE_AGENT_IDS = DEPARTMENTS.flatMap((d) => d.agents.map((a) => a.id));
+
+const DELEGATE_TOOL = {
+  type: 'function',
+  function: {
+    name: 'delegate',
+    description: 'Делегировать подзадачу конкретному агенту департамента. Используй для любой работы вне твоей оркестрации: тексты — copywriter, дизайн — designer, код — backend/frontend/aiml, реклама — targetolog, исследования — osint/intel-scout, безопасность — security-officer. На фронте появится индикатор «<агент> работает». Возвращает текстовый ответ агента.',
+    parameters: {
+      type: 'object',
+      properties: {
+        agent_id: {
+          type: 'string',
+          enum: DELEGATE_AGENT_IDS,
+          description: 'ID агента — одно из значений из enum.',
+        },
+        task: {
+          type: 'string',
+          description: 'Что именно агент должен сделать. Сформулируй как самостоятельное задание — у агента нет твоего контекста по умолчанию.',
+        },
+        context: {
+          type: 'string',
+          description: 'Опционально: ключевой контекст (бриф, ЦА, ограничения), если задача без него непонятна.',
+        },
+      },
+      required: ['agent_id', 'task'],
+    },
+  },
+};
+
+const WEB_TOOLS = [
   {
     type: 'function',
     function: {
@@ -76,7 +106,7 @@ const TOOL_DEFS = [
   },
 ];
 
-const TOOLS_ENABLED_AGENTS = new Set([
+const WEB_TOOL_AGENTS = new Set([
   'chief',
   'strategist',
   'targetolog',
@@ -87,12 +117,22 @@ const TOOLS_ENABLED_AGENTS = new Set([
   'intel-scout',
 ]);
 
+const TOOL_DEFS = [DELEGATE_TOOL, ...WEB_TOOLS];
+
 function hasTools(agentId) {
-  return TOOLS_ENABLED_AGENTS.has(agentId);
+  return agentId === 'chief' || WEB_TOOL_AGENTS.has(agentId);
 }
 
 function getToolsForAgent(agentId) {
-  return hasTools(agentId) ? TOOL_DEFS : null;
+  if (agentId === 'chief') {
+    return process.env.FIRECRAWL_API_KEY || process.env.BRAVE_API_KEY
+      ? [DELEGATE_TOOL, ...WEB_TOOLS]
+      : [DELEGATE_TOOL];
+  }
+  if (WEB_TOOL_AGENTS.has(agentId) && (process.env.FIRECRAWL_API_KEY || process.env.BRAVE_API_KEY)) {
+    return WEB_TOOLS;
+  }
+  return null;
 }
 
 async function executeTool(name, rawArgs) {
@@ -101,6 +141,9 @@ async function executeTool(name, rawArgs) {
   if (name === 'firecrawl_scrape') return await firecrawl.scrape(args);
   if (name === 'brave_search') return await brave.search(args);
   if (name === 'brave_news') return await brave.news(args);
+  if (name === 'delegate') {
+    throw new Error('delegate_must_be_handled_in_server');
+  }
   throw new Error(`unknown_tool: ${name}`);
 }
 

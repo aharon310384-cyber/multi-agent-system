@@ -56,6 +56,20 @@ const DEPARTMENTS = [
       { id: 'copywriter', name: 'Копирайтер', skills: ['КП, лендинги, ТЗ', 'Посты, креативы, рассылки'], inputs: ['Бриф', 'ЦА', 'Оффер'], outputs: ['Тексты', 'Структуры'], tools: ['Claude', 'Perplexity', 'LanguageTool'], example: 'Написать структуру КП под digital-агентство для B2B-клиента.' },
     ],
   },
+  {
+    id: 'security', name: 'Безопасность', accent: '#FF5C7A', short: 'БЗП',
+    output: 'Контроль рисков', workload: 0.4, activeTasks: 1,
+    agents: [
+      { id: 'security-officer', name: 'Агент безопасности', skills: ['Секреты и доступы', 'Прод-действия', 'Аудит и угрозы', 'OWASP-проверки кода'], inputs: ['Код', 'Конфиги', 'Запрос доступа'], outputs: ['Вердикт', 'Отчёт уязвимостей'], tools: ['osint-mcp-server', 'Semgrep', 'Trivy', 'Vault'], example: 'Проверить PR на утечку секретов и наличие OWASP-категорий до мерджа в main.' },
+    ],
+  },
+  {
+    id: 'intel', name: 'Онлайн разведка', accent: '#4DE3FF', short: 'РЗВ',
+    output: 'AI-дайджест', workload: 0.6, activeTasks: 2,
+    agents: [
+      { id: 'intel-scout', name: 'Intel-Scout', skills: ['Daily-мониторинг AI-стека', 'Фильтрация сигнал/шум', 'Дайджест с приоритизацией'], inputs: ['RSS, GitHub, Brave News, ArXiv'], outputs: ['Дайджест', 'Proposals в backlog'], tools: ['Brave Search', 'Firecrawl', 'OpenRouter', 'rss-reader'], example: 'Каждое утро присылать дайджест 3-5 находок по Claude Code, MCP, vibe-coding с приоритетами 🔴/🟡/🟢.' },
+    ],
+  },
 ];
 
 const ORCHESTRATOR = {

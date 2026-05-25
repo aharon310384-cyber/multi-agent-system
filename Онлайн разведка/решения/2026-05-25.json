@@ -1,0 +1,41 @@
+{
+  "date": "2026-05-25",
+  "telegramMessageIds": null,
+  "operator_message": "🛰️ Intel-Scout дайджест — 2026-05-25\nДатасет свежий: 3 кандидата, найдено 89 сигналов. Из заметного — datasette-agent для интерактивной работы с данными без внешних инструментов. Остальное пока на уровне research-идей.\n\nAPPROVED (1):\n🔸 datasette-agent | 🟡 consider | ~8ч | owner: data\nНовое: легковесный агент для интерактивных запросов к данным прямо из стека. Заменяет ручные SQL-сессии и ускоряет работу с данными. Риск низкий, лицензия MIT. Делегирую агенту data.\n\nPOSTPONE (1):\n🔸 BOHM — hierarchical attribution | 🟡 consider\nИнтересная тема для прозрачности compound AI-систем, но реализация на 12ч с medium-риском. Не срочно; откладываю до появления более зрелых артефактов.\n\nREJECTED (1):\n🔸 RMA — research-level math solver | 🟢 info\nПометка «needs_approval: false», exploratory-стадия без concrete плана внедрения. Фильтрую.\n\nМетрики: 314с, источников: 8/13, кандидатов: 3",
+  "items": [
+    {
+      "proposal_id": "P-2026-05-25-01",
+      "title": "Integrate datasette-agent for enhanced data interaction",
+      "url": "https://simonwillison.net/2026/May/24/datasette-agent/#atom-everything",
+      "title_hash": null,
+      "priority": "🟡 consider",
+      "category": "new_capability",
+      "status": "approved",
+      "decided_at": "2026-05-25T17:25:35.001Z",
+      "delegated_to": "data"
+    },
+    {
+      "proposal_id": "P-2026-05-25-02",
+      "title": "Adopt BOHM for hierarchical attribution in compound AI systems",
+      "url": "https://arxiv.org/abs/2605.22866",
+      "title_hash": null,
+      "priority": "🟡 consider",
+      "category": "new_capability",
+      "status": "postponed",
+      "decided_at": "2026-05-25T17:25:35.001Z",
+      "delegated_to": null
+    },
+    {
+      "proposal_id": "P-2026-05-25-03",
+      "title": "Explore RMA for research-level mathematical problem solving",
+      "url": "https://arxiv.org/abs/2605.22875",
+      "title_hash": null,
+      "priority": "🟢 info",
+      "category": "new_capability",
+      "status": "rejected",
+      "decided_at": "2026-05-25T17:25:35.001Z",
+      "delegated_to": null
+    }
+  ],
+  "updated_at": "2026-05-25T17:25:35.001Z"
+}

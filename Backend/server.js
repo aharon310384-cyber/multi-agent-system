@@ -91,6 +91,51 @@ function resolveAgent(agentId) {
   return null;
 }
 
+async function runDelegate(args) {
+  const targetId = typeof args?.agent_id === 'string' ? args.agent_id : '';
+  const task = typeof args?.task === 'string' ? args.task : '';
+  const context = typeof args?.context === 'string' ? args.context : '';
+  if (!targetId) return { error: 'agent_id_required' };
+  if (!task.trim()) return { error: 'task_required' };
+  const sub = resolveAgent(targetId);
+  if (!sub) return { error: 'agent_not_found', agent_id: targetId };
+  if (sub.isOrchestrator) return { error: 'cannot_delegate_to_orchestrator' };
+
+  const systemPrompt = buildAgentSystemPrompt(sub.agent, sub.dept, { toolsBlock: '' });
+  const userPrompt = context ? `${task}\n\n— Контекст от оркестратора —\n${context}` : task;
+  const model = resolveModel(sub.agent.id);
+
+  const r = await fetch(OPENROUTER_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'http://localhost',
+      'X-Title': 'Multi-Agent Delegate',
+    },
+    body: JSON.stringify({
+      model,
+      messages: applyCacheControl([
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ], model),
+      temperature: getTaskType(sub.agent.id) === 'dev' ? 0.3 : 0.6,
+    }),
+  });
+  const txt = await r.text();
+  if (!r.ok) return { error: 'delegate_llm_error', status: r.status, body: txt.slice(0, 400), agent_id: targetId };
+  let json;
+  try { json = JSON.parse(txt); } catch { return { error: 'invalid_json', agent_id: targetId }; }
+  const reply = json.choices?.[0]?.message?.content || '';
+  return {
+    agent_id: targetId,
+    agent_name: sub.agent.name,
+    dept_name: sub.dept?.name || null,
+    model,
+    reply,
+  };
+}
+
 async function runChatTurn({ model, messages, taskType, tools, sendEvent }) {
   const body = {
     model,
@@ -182,23 +227,17 @@ app.post('/api/chat', async (req, res) => {
 
   const messages = Array.isArray(req.body?.messages) ? req.body.messages : null;
   const text = typeof req.body?.text === 'string' ? req.body.text : '';
-  let agentId = typeof req.body?.agentId === 'string' ? req.body.agentId : '';
   const modelOverride = typeof req.body?.model === 'string' ? req.body.model : null;
 
   if (!messages && !text.trim()) {
     return res.status(400).json({ error: 'text или messages обязательны' });
   }
 
-  if (!agentId) {
-    const probe = text || (messages?.[messages.length - 1]?.content || '');
-    const route = routeTask(probe);
-    if (route) agentId = route.agent.id;
-  }
-
+  const agentId = 'chief';
   const resolved = resolveAgent(agentId);
   if (!resolved) return res.status(404).json({ error: 'agent_not_found' });
 
-  const agentTools = process.env.FIRECRAWL_API_KEY ? getToolsForAgent(resolved.agent.id) : null;
+  const agentTools = getToolsForAgent(resolved.agent.id);
   const toolsBlock = agentTools ? TOOLS_PROMPT_BLOCK : '';
 
   const systemPrompt = resolved.isOrchestrator
@@ -276,11 +315,21 @@ app.post('/api/chat', async (req, res) => {
           const name = tc.function.name;
           let args = {};
           try { args = tc.function.arguments ? JSON.parse(tc.function.arguments) : {}; } catch {}
-          sendEvent('tool_call', { id: tc.id, name, args });
+          const meta = {};
+          if (name === 'delegate') {
+            const sub = resolveAgent(args.agent_id);
+            meta.agentName = sub?.agent?.name || args.agent_id || 'агент';
+            meta.deptName = sub?.dept?.name || null;
+          }
+          sendEvent('tool_call', { id: tc.id, name, args, meta });
           let result;
           let isError = false;
           try {
-            result = await executeTool(name, args);
+            if (name === 'delegate') {
+              result = await runDelegate(args);
+            } else {
+              result = await executeTool(name, args);
+            }
           } catch (err) {
             isError = true;
             result = { error: err?.message || String(err), code: err?.code || null };
@@ -291,7 +340,9 @@ app.post('/api/chat', async (req, res) => {
               ? { query: result.query, count: result.results?.length || 0 }
               : name === 'firecrawl_scrape'
                 ? { url: result.url, title: result.title, chars: result.markdown?.length || 0 }
-                : {};
+                : name === 'delegate'
+                  ? { agent_id: args.agent_id, agentName: meta.agentName, chars: (result.reply || '').length, model: result.model }
+                  : {};
             sendEvent('tool_result', { id: tc.id, name, summary });
           }
           chatMessages.push({

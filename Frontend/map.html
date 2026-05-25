@@ -299,6 +299,18 @@
   .agent-body { display: flex; flex-direction: column; min-width: 0; }
   .agent-name { font-size: 13px; font-weight: 500; line-height: 1.2; }
   .agent-skills { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--text-2); letter-spacing: 0.04em; margin-top: 2px; }
+  .agent-okr-badge {
+    margin-top: 5px;
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 9.5px; font-weight: 600; letter-spacing: 0.08em;
+    color: var(--green);
+    background: rgba(102,242,166,0.10);
+    border: 1px solid color-mix(in srgb, var(--green) 40%, transparent);
+    border-radius: 3px;
+    padding: 1px 6px;
+    width: fit-content;
+    text-transform: uppercase;
+  }
   .node-agent:hover .agent-frame { border-color: var(--border-strong); background: #181F29; }
   .node-agent.is-selected .agent-frame { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan), 0 4px 14px rgba(77,227,255,0.18); }
 
@@ -382,6 +394,34 @@
     background: rgba(77,227,255,0.04);
     font-size: 12.5px;
     color: var(--text);
+  }
+  /* OKR block in inspector */
+  .okr-list { display: flex; flex-direction: column; gap: 14px; }
+  .okr-item {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: linear-gradient(180deg, rgba(102,242,166,0.04), rgba(77,227,255,0.03));
+    padding: 10px 12px;
+  }
+  .okr-objective { display: flex; gap: 9px; align-items: baseline; margin-bottom: 8px; }
+  .okr-num {
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em;
+    color: var(--green);
+    border: 1px solid color-mix(in srgb, var(--green) 50%, transparent);
+    background: rgba(102,242,166,0.08);
+    padding: 2px 6px; border-radius: 3px;
+    white-space: nowrap;
+  }
+  .okr-obj-text { font-size: 12.5px; font-weight: 600; color: var(--text); line-height: 1.45; }
+  .okr-krs { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+  .okr-kr {
+    position: relative;
+    padding-left: 14px;
+    font-size: 11.5px; color: var(--text-2); line-height: 1.45;
+  }
+  .okr-kr::before {
+    content: '▸'; position: absolute; left: 0; top: 0;
+    color: var(--cyan); font-size: 10px;
   }
   .insp-footer {
     margin-top: auto;
@@ -933,7 +973,12 @@ function AgentNode({ agent, deptAccent, position, onClick, dimmed, selected, sce
         <div className="agent-dot" style={{ background: deptAccent }}></div>
         <div className="agent-body">
           <div className="agent-name">{agent.name}</div>
-          <div className="agent-skills">{agent.skills.slice(0, 2).join(' · ')}</div>
+          <div className="agent-skills">{(agent.skills || []).slice(0, 2).join(' · ')}</div>
+          {Array.isArray(agent.okr) && agent.okr.length > 0 && (
+            <div className="agent-okr-badge mono" title={`OKR Q3 2026 · ${agent.okr.length} цели · ${agent.okr.reduce((s,o)=>s+(o.krs?.length||0),0)} KR`}>
+              ◎ OKR · {agent.okr.length}×{(agent.okr[0]?.krs?.length || 3)} KR
+            </div>
+          )}
         </div>
         <StatusDot color={statusColor} pulse={scenarioStatus === 'active'} />
       </div>
@@ -1145,6 +1190,23 @@ function Inspector({ selection, onClose }) {
       <Section title="Пример задачи">
         <p className="insp-example">{agent.example}</p>
       </Section>
+      {Array.isArray(agent.okr) && agent.okr.length > 0 && (
+        <Section title={`OKR · Q3 2026 (${agent.okr.length} цели)`}>
+          <div className="okr-list">
+            {agent.okr.map((o, i) => (
+              <div key={i} className="okr-item">
+                <div className="okr-objective">
+                  <span className="okr-num mono">O{i + 1}</span>
+                  <span className="okr-obj-text">{o.o}</span>
+                </div>
+                <ul className="okr-krs">
+                  {(o.krs || []).map((kr, j) => <li key={j} className="okr-kr">{kr}</li>)}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
       <div className="insp-footer">
         <span className="insp-mono dim">SESSION · 0xA4F2 · live</span>
         <span className="insp-mono dim">runs today · 38</span>

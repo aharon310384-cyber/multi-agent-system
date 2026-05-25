@@ -28,6 +28,9 @@ const TASK_TYPE = {
   ba: 'orchestration',
   osint: 'orchestration',
 
+  // Онлайн-разведка → Sonnet 4.5 (баланс качества/цены для аналитики)
+  'intel-scout': 'intel',
+
   // Дефолт (designer, sales, account) → DeepSeek V3 (deepseek-chat)
 };
 
@@ -36,6 +39,7 @@ const DEFAULT_MODELS = {
   dev: 'anthropic/claude-opus-4.7',
   marketing: 'google/gemini-2.5-flash',
   orchestration: 'minimax/minimax-m2.7',
+  intel: 'anthropic/claude-sonnet-4.5',
 };
 
 const IMAGE_MODEL = 'google/gemini-2.5-flash-image';
@@ -61,4 +65,36 @@ function getImageModel() {
   return process.env.OPENROUTER_MODEL_IMAGE || IMAGE_MODEL;
 }
 
-module.exports = { resolveModel, getTaskType, getImageModel, DEFAULT_MODELS, TASK_TYPE };
+function supportsExplicitCache(model) {
+  if (typeof model !== 'string') return false;
+  return model.startsWith('anthropic/');
+}
+
+function applyCacheControl(messages, model) {
+  if (!supportsExplicitCache(model)) return messages;
+  return messages.map((m, i) => {
+    if (m.role !== 'system' || typeof m.content !== 'string' || m.content.length < 1024) {
+      return m;
+    }
+    return {
+      role: 'system',
+      content: [
+        {
+          type: 'text',
+          text: m.content,
+          cache_control: { type: 'ephemeral' },
+        },
+      ],
+    };
+  });
+}
+
+module.exports = {
+  resolveModel,
+  getTaskType,
+  getImageModel,
+  supportsExplicitCache,
+  applyCacheControl,
+  DEFAULT_MODELS,
+  TASK_TYPE,
+};

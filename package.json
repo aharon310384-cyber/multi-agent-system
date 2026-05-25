@@ -6,7 +6,12 @@
   "main": "Backend/server.js",
   "scripts": {
     "start": "node Backend/server.js",
-    "dev": "node --watch Backend/server.js"
+    "dev": "node --watch Backend/server.js",
+    "intel-scout": "node Backend/intel-scout/cli.js",
+    "intel-scout:dry": "node Backend/intel-scout/cli.js --dry",
+    "intel-scout:deliver": "node Backend/intel-scout/cli.js --deliver",
+    "intel-scout:sync": "node Backend/intel-scout/cli.js --sync-only",
+    "intel-scout:daily": "node Backend/intel-scout/cli.js --sync --deliver"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -14,6 +19,7 @@
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "rss-parser": "^3.13.0"
   }
 }

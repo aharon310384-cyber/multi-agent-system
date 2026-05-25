@@ -1,0 +1,290 @@
+{
+  "date": "2026-05-26",
+  "snapshot": {
+    "models_in_use": {
+      "default": "deepseek/deepseek-chat",
+      "dev": "anthropic/claude-opus-4.7",
+      "marketing": "google/gemini-2.5-flash",
+      "orchestration": "minimax/minimax-m2.7",
+      "intel": "anthropic/claude-sonnet-4.5"
+    },
+    "mcp_servers": [
+      "github",
+      "notebooklm-mcp",
+      "osint-mcp-server",
+      "firecrawl",
+      "apify",
+      "rss-reader",
+      "youtube-transcript",
+      "reddit",
+      "hackernews"
+    ],
+    "plugins": [
+      "version",
+      "plugins"
+    ]
+  },
+  "metrics": {
+    "sources_scanned_ok": 7,
+    "sources_failed": 6,
+    "raw_signals": 87,
+    "after_dedup": 81,
+    "excluded_by_past_decisions": 1,
+    "after_noise_filter": 29,
+    "already_in_stack": 3,
+    "in_digest_candidates": 15,
+    "duration_ms": 98500
+  },
+  "proposals": [
+    {
+      "id": "P-2026-05-26-01",
+      "priority": "🟡 consider",
+      "category": "new_capability",
+      "title": "Russian Dictation Support for AI",
+      "what_we_have_now": "No native Russian dictation support in some AI applications, particularly Anthropic.",
+      "what_is_new": "Integration of Russian dictation capability into the system.",
+      "why_it_matters": "Enhances user experience for Russian-speaking users by allowing voice input without keyboard.",
+      "sources": [
+        "https://habr.com/ru/articles/1039248/?utm_campaign=1039248&utm_source=habrahabr&utm_medium=rss"
+      ],
+      "rollout_plan": [
+        "Research existing solutions for Russian dictation",
+        "Integrate with current AI models",
+        "Test and deploy"
+      ],
+      "needs_approval": true,
+      "effort_estimate_hours": 40,
+      "expected_gain": {
+        "capability_added": "Russian dictation support"
+      },
+      "risk": "Potential integration issues with existing models.",
+      "license": "Open-source or proprietary, depending on solution."
+    },
+    {
+      "id": "P-2026-05-26-02",
+      "priority": "🟡 consider",
+      "category": "new_capability",
+      "title": "AI Agent Assembly Platform",
+      "what_we_have_now": "No visual constructor for assembling AI agents without programming knowledge.",
+      "what_is_new": "Integration of a visual constructor for assembling AI agents.",
+      "why_it_matters": "Lowers the barrier to entry for non-technical users to create AI agents.",
+      "sources": [
+        "https://habr.com/ru/companies/ru_mts/articles/1038936/?utm_campaign=1038936&utm_source=habrahabr&utm_medium=rss"
+      ],
+      "rollout_plan": [
+        "Evaluate existing platforms like MWS AI Agents Platform",
+        "Develop or integrate a similar tool",
+        "Test and deploy"
+      ],
+      "needs_approval": true,
+      "effort_estimate_hours": 60,
+      "expected_gain": {
+        "capability_added": "Visual AI agent assembly"
+      },
+      "risk": "Complexity in ensuring compatibility with existing systems.",
+      "license": "Proprietary or open-source, depending on choice."
+    },
+    {
+      "id": "P-2026-05-26-03",
+      "priority": "🟢 info",
+      "category": "new_capability",
+      "title": "Human-LLM Co-Planning Framework",
+      "what_we_have_now": "Limited transparency and control in multi-agent system planning.",
+      "what_is_new": "Implementation of a human-LLM co-planning framework for better control.",
+      "why_it_matters": "Improves user ability to manage and understand complex multi-agent plans.",
+      "sources": [
+        "https://arxiv.org/abs/2605.23023"
+      ],
+      "rollout_plan": [
+        "Research the proposed framework",
+        "Adapt for our system",
+        "Pilot test"
+      ],
+      "needs_approval": false,
+      "effort_estimate_hours": 30,
+      "expected_gain": {
+        "capability_added": "Enhanced planning transparency"
+      },
+      "risk": "May require significant changes to current orchestration.",
+      "license": "Open-source, based on arXiv paper."
+    }
+  ],
+  "summary_md": "### Intel-Scout Digest 2026-05-25\n\n**Proposals:**\n1. **Russian Dictation Support for AI** (🟡 consider) - Add Russian voice input capability, enhancing UX for Russian speakers. [Read more](https://habr.com/ru/articles/1039248/).\n2. **AI Agent Assembly Platform** (🟡 consider) - Visual tool for non-technical users to build AI agents. [Read more](https://habr.com/ru/companies/ru_mts/articles/1038936/).\n3. **Human-LLM Co-Planning Framework** (🟢 info) - Improve multi-agent plan transparency. [Read more](https://arxiv.org/abs/2605.23023).\n\n**Summary:**\nToday's focus is on expanding capabilities with Russian dictation and visual agent assembly, plus improving planning transparency. All proposals are low-risk and align with gaps in our current stack.",
+  "usage": {
+    "prompt_tokens": 3951,
+    "completion_tokens": 874,
+    "total_tokens": 4825,
+    "cost": 0.0027166,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 0.0027166,
+      "upstream_inference_prompt_cost": 0.0015804,
+      "upstream_inference_completions_cost": 0.0011362
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  },
+  "model": "deepseek/deepseek-chat-v3",
+  "errors": [
+    {
+      "source": "arxiv-cs-ai",
+      "source_type": "rss",
+      "error": "Request timed out after 15000ms"
+    },
+    {
+      "source": "openrouter-blog",
+      "source_type": "rss",
+      "error": "Invalid character in entity name\nLine: 126\nColumn: 184\nChar: &"
+    },
+    {
+      "source": "reddit/LocalLLaMA",
+      "source_type": "reddit",
+      "error": "Status code 403"
+    },
+    {
+      "source": "reddit/ClaudeAI",
+      "source_type": "reddit",
+      "error": "Status code 403"
+    },
+    {
+      "source": "reddit/singularity",
+      "source_type": "reddit",
+      "error": "Status code 403"
+    },
+    {
+      "source": "reddit/MachineLearning",
+      "source_type": "reddit",
+      "error": "Status code 403"
+    }
+  ],
+  "already_in_stack_examples": [
+    {
+      "title": "GitHub for Beginners: Getting started with Git and GitHub in VS Code",
+      "matched": "github"
+    },
+    {
+      "title": "Host-Tuned GCC for Faster Compilation",
+      "matched": "github"
+    },
+    {
+      "title": "The Eternal Sloptember",
+      "matched": "github"
+    }
+  ],
+  "top_candidates": [
+    {
+      "title": "Using AI to write better code more slowly",
+      "url": "https://nolanlawson.com/2026/05/25/using-ai-to-write-better-code-more-slowly/",
+      "title_hash": "37051206f04ecf51",
+      "source": "lobsters",
+      "score": 0.5431
+    },
+    {
+      "title": "The Open/Closed Problem in AI",
+      "url": "https://blog.mempko.com/the-open-closed-problem-in-ai/",
+      "title_hash": "b3f3665f04445ad7",
+      "source": "lobsters",
+      "score": 0.543
+    },
+    {
+      "title": "datasette-agent 0.1a4",
+      "url": "https://simonwillison.net/2026/May/24/datasette-agent/#atom-everything",
+      "title_hash": "bd372e5204c5798f",
+      "source": "simonw-blog",
+      "score": 0.5216
+    },
+    {
+      "title": "Как я решил проблему русской диктовки для ИИ",
+      "url": "https://habr.com/ru/articles/1039248/?utm_campaign=1039248&utm_source=habrahabr&utm_medium=rss",
+      "title_hash": "bf8217b6a5c03008",
+      "source": "habr-ai",
+      "score": 0.5088
+    },
+    {
+      "title": "Обзор серверного ускорителя NVIDIA Tesla V100 16 Gb в корпусе от RTX 4090: Часть 3 — Запуск локальных моделей ИИ",
+      "url": "https://habr.com/ru/articles/1039198/?utm_campaign=1039198&utm_source=habrahabr&utm_medium=rss",
+      "title_hash": "4ea24b9b3d9364d2",
+      "source": "habr-ai",
+      "score": 0.5018
+    },
+    {
+      "title": "I just want an agent. Часть 1. Как я научил ИИ собирать ИИ‑агентов за пользователей и выиграл конкурс",
+      "url": "https://habr.com/ru/companies/ru_mts/articles/1038936/?utm_campaign=1038936&utm_source=habrahabr&utm_medium=rss",
+      "title_hash": "7f4a9b00f3718a05",
+      "source": "habr-ai",
+      "score": 0.4964
+    },
+    {
+      "title": "Я стала тимлидом команды джунов, работали быстро и по ночам. А потом закончились токены",
+      "url": "https://habr.com/ru/companies/sibur_official/articles/1039014/?utm_campaign=1039014&utm_source=habrahabr&utm_medium=rss",
+      "title_hash": "d0933fedfdad2ace",
+      "source": "habr-ai",
+      "score": 0.4964
+    },
+    {
+      "title": "Святой Августин и GAN: почему борьба добра и зла — это генеративная состязательная сеть",
+      "url": "https://habr.com/ru/articles/1039144/?utm_campaign=1039144&utm_source=habrahabr&utm_medium=rss",
+      "title_hash": "6810b53604551001",
+      "source": "habr-ai",
+      "score": 0.4957
+    },
+    {
+      "title": "На каком стеке и железе работает умное наблюдение в вашем городе: обзор технологий от разработчиков видеоаналитики",
+      "url": "https://habr.com/ru/articles/1039094/?utm_campaign=1039094&utm_source=habrahabr&utm_medium=rss",
+      "title_hash": "364729712422351b",
+      "source": "habr-ai",
+      "score": 0.4907
+    },
+    {
+      "title": "Профайлер для PostgreSQL: от идеи до работающего MVP за сутки",
+      "url": "https://habr.com/ru/companies/tantor/articles/1038214/?utm_campaign=1038214&utm_source=habrahabr&utm_medium=rss",
+      "title_hash": "3f3d70a3e45083ad",
+      "source": "habr-ai",
+      "score": 0.488
+    },
+    {
+      "title": "How to Steer Your Multi-Agent System: Human-LLM Collaborative Planning",
+      "url": "https://arxiv.org/abs/2605.23023",
+      "title_hash": "5a43d3b4ca23bde5",
+      "source": "arxiv-cs-ma",
+      "score": 0.4869
+    },
+    {
+      "title": "SVR-MAD: A Bayesian-Inspired Framework for Posterior-Guided Multi-Agent Debate",
+      "url": "https://arxiv.org/abs/2605.23099",
+      "title_hash": "284e1544cc5b3b9e",
+      "source": "arxiv-cs-ma",
+      "score": 0.4869
+    },
+    {
+      "title": "Self-Refining Topology Optimization via an LLM-Based Multi-Agent Framework",
+      "url": "https://arxiv.org/abs/2605.23273",
+      "title_hash": "646054f470262f00",
+      "source": "arxiv-cs-ma",
+      "score": 0.4869
+    },
+    {
+      "title": "ARMS: Automatic Reward Shaping for Sparse-Reward Multi-Agent Reinforcement Learning",
+      "url": "https://arxiv.org/abs/2605.23562",
+      "title_hash": "5f5c06083867b347",
+      "source": "arxiv-cs-ma",
+      "score": 0.4869
+    },
+    {
+      "title": "MARGIN: Runtime Confidence Calibration for Multi-Agent Foundation Model Coordination",
+      "url": "https://arxiv.org/abs/2605.22949",
+      "title_hash": "636b517568840013",
+      "source": "arxiv-cs-ma",
+      "score": 0.4869
+    }
+  ]
+}

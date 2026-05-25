@@ -1,0 +1,43 @@
+{
+  "date": "2026-05-26",
+  "telegramMessageIds": [
+    432
+  ],
+  "operator_message": "<minimax:tool_call>\n<invoke name=\"deliver_decision\">\n<parameter name=\"operator_message\">🛰️ Intel-Scout дайджест — 2026-05-25\nСканирование завершено: найдено 3 кандидата на расширение возможностей. Есть два реальных кандидата с приемлемым риском — предлагаю к рассмотрению.\n\nAPPROVED (2):\n\n🟡 P-2026-05-26-01 | Russian Dictation Support for AI\nДобавить голосовой ввод на русском языке в AI-приложения. Устраняет проблему отсутствия нативной диктовки для русскоязычных пользователей.\n effort: 40ч | исполнитель: backend/aiml\n\n🟡 P-2026-05-26-02 | AI Agent Assembly Platform\nВизуальный конструктор для сборки AI-агентов без программирования. Снижает порог входа для нетехнических пользователей.\n effort: 60ч | исполнитель: techlead/backend\n\nPOSTPONE (1):\n\n🟢 P-2026-05-26-03 | Human-LLM Co-Planning Framework — интересная концепция прозрачности многоагентного планирования, но требует отдельной проработки; пока в backlog на будущее.\n\nREJECTED (0):\nНет.\n\nМетрики: 98.5 сек, источников: 7/13, кандидатов: 3</parameter>\n<parameter name=\"approved",
+  "items": [
+    {
+      "proposal_id": "P-2026-05-26-01",
+      "title": "Russian Dictation Support for AI",
+      "url": "https://habr.com/ru/articles/1039248/?utm_campaign=1039248&utm_source=habrahabr&utm_medium=rss",
+      "title_hash": null,
+      "priority": "🟡 consider",
+      "category": "new_capability",
+      "status": "pending",
+      "decided_at": "2026-05-25T16:42:17.990Z",
+      "delegated_to": null
+    },
+    {
+      "proposal_id": "P-2026-05-26-02",
+      "title": "AI Agent Assembly Platform",
+      "url": "https://habr.com/ru/companies/ru_mts/articles/1038936/?utm_campaign=1038936&utm_source=habrahabr&utm_medium=rss",
+      "title_hash": null,
+      "priority": "🟡 consider",
+      "category": "new_capability",
+      "status": "pending",
+      "decided_at": "2026-05-25T16:42:17.991Z",
+      "delegated_to": null
+    },
+    {
+      "proposal_id": "P-2026-05-26-03",
+      "title": "Human-LLM Co-Planning Framework",
+      "url": "https://arxiv.org/abs/2605.23023",
+      "title_hash": null,
+      "priority": "🟢 info",
+      "category": "new_capability",
+      "status": "pending",
+      "decided_at": "2026-05-25T16:42:17.991Z",
+      "delegated_to": null
+    }
+  ],
+  "updated_at": "2026-05-25T16:42:17.991Z"
+}

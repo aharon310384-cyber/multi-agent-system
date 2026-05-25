@@ -36,6 +36,12 @@
 | `OPENROUTER_MODEL_ORCHESTRATION` | `minimax/minimax-m2`                | Нет         |
 | `OPENROUTER_MODEL_IMAGE`         | `google/gemini-2.5-flash-image-preview` | Нет     |
 | `FIRECRAWL_API_KEY`              | ключ с <https://www.firecrawl.dev/app/api-keys> | Нет (без него агенты chief/маркетинг/ОСИНТ работают без веб-доступа) |
+| `BRAVE_API_KEY`                  | ключ с <https://api-dashboard.search.brave.com/register> | Нет (без него отключаются tools `brave_search`/`brave_news`; ~1K запросов/мес бесплатно на Free-плане) |
+| `TELEGRAM_BOT_TOKEN`             | токен Telegram-бота (получить у @BotFather) | Нет (без него `/api/intel-scout/run` пропускает доставку — дайджест возвращается только в HTTP-ответе и в `Онлайн разведка/архив/`) |
+| `TELEGRAM_CHAT_ID`               | `7910484608` (chat_id оператора) | Нет (вместе с `TELEGRAM_BOT_TOKEN` включает delivery через оркестратора → Telegram) |
+| `OPENROUTER_MODEL_INTEL_SCOUT`   | override модели для анализа в digest.js (по умолчанию `anthropic/claude-sonnet-4.5`) | Нет |
+| `OPENROUTER_MODEL_FILTER`        | override модели для фильтра шума в noise-filter.js (по умолчанию `google/gemini-2.5-flash`) | Нет |
+| `VT_API_KEY`                     | ключ с <https://www.virustotal.com/gui/my-apikey> (бесплатный, 500 req/day) | Нет (без него `mcp__osint-mcp-server__vt_domain` отключён — security-check новых RSS-источников будет только через whois+dns) |
 | `PORT`                           | `3000` (если Timeweb не пробрасывает свой) | Зависит от платформы |
 
 Дефолты моделей зашиты в `Backend/model-router.js` — если не задавать override, он подставит их сам.
@@ -51,6 +57,34 @@
 - `https://<your-app>.twc1.net/api/health` → `{ "ok": true, "llm": { "configured": true, ... } }`
 - `https://<your-app>.twc1.net/` → чат-оркестратор (index.html)
 - `https://<your-app>.twc1.net/map.html` → карта оркестрации
+
+## 5.1 Cron для intel-scout (ежедневный AI-дайджест)
+
+### Windows (локально на машине оператора)
+
+Однократно зарегистрировать задачу в Task Scheduler:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Projects\Многоагентная система\scripts\register-task-scheduler.ps1"
+```
+
+Это создаст задачу `IntelScoutDaily`, которая каждый день в **09:00** запускает `scripts/intel-scout-daily.ps1` → `node Backend/intel-scout/cli.js --deliver` → дайджест → оркестратор → Telegram оператору.
+
+Полезные команды:
+- Запустить вручную: `Start-ScheduledTask -TaskName IntelScoutDaily`
+- Статус: `Get-ScheduledTask -TaskName IntelScoutDaily | Get-ScheduledTaskInfo`
+- Удалить: `schtasks /Delete /TN IntelScoutDaily /F`
+
+Логи каждого прогона: `Онлайн разведка/архив/cron-YYYY-MM-DD_HHMMSS.log` (+ `.err`).
+
+### Timeweb Cloud Apps (Linux)
+
+Если Apps не даёт нативный cron — самый простой вариант поднять отдельный **Cloud Server (VPS)** для cron или использовать внешний планировщик (cron-job.org, EasyCron) с веб-хуком на `https://<your-app>.twc1.net/api/intel-scout/run`.
+
+Вариант через crontab на VPS:
+```bash
+0 9 * * * /usr/bin/env bash /opt/multi-agent-system/scripts/intel-scout-daily.sh
+```
 
 ## 6. Авто-деплой при push
 

@@ -6,7 +6,7 @@ require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
 
 const { DEPARTMENTS, ORCHESTRATOR, SCENARIOS, FLOW_EDGES, ROUTING_RULES, routeTask } = require('./data');
 const { buildAgentSystemPrompt, buildOrchestratorPrompt } = require('./agent-prompt');
-const { resolveModel, getTaskType, getImageModel, DEFAULT_MODELS } = require('./model-router');
+const { resolveModel, getTaskType, getImageModel, applyCacheControl, DEFAULT_MODELS } = require('./model-router');
 const { getToolsForAgent, hasTools, executeTool, TOOLS_PROMPT_BLOCK } = require('./tools');
 
 const PORT = Number(process.env.PORT) || 3000;
@@ -94,9 +94,10 @@ function resolveAgent(agentId) {
 async function runChatTurn({ model, messages, taskType, tools, sendEvent }) {
   const body = {
     model,
-    messages,
+    messages: applyCacheControl(messages, model),
     stream: true,
     temperature: taskType === 'dev' ? 0.3 : 0.6,
+    usage: { include: true },
     provider: {
       order: ['Fireworks', 'Together', 'Novita', 'Hyperbolic'],
       allow_fallbacks: true,
@@ -357,6 +358,41 @@ app.post('/api/embed', (_req, res) => {
     reason: 'OpenRouter не предоставляет endpoint /embeddings. Для семантического поиска по базе знаний нужен отдельный ключ OpenAI / Voyage / Cohere.',
     workaround: 'Можно подключить OpenAI embeddings (text-embedding-3-large) или локальную модель через sentence-transformers — обоё требует доп. инфраструктуры (vector DB + индексация Knowledge base/).',
   });
+});
+
+app.post('/api/intel-scout/run', async (req, res) => {
+  if (!OPENROUTER_API_KEY) return res.status(500).json({ error: 'OPENROUTER_API_KEY не задан в .env' });
+  const windowHours = Number(req.body?.windowHours) > 0 ? Number(req.body.windowHours) : 24;
+  const dryLLM = Boolean(req.body?.dryLLM);
+  const skipDelivery = Boolean(req.body?.skipDelivery);
+
+  let pipeline, delivery;
+  try {
+    pipeline = require('./intel-scout/pipeline');
+    delivery = require('./intel-scout/delivery');
+  } catch (e) {
+    return res.status(500).json({ error: 'intel_scout_module_load_failed', message: e.message });
+  }
+
+  try {
+    const t0 = Date.now();
+    const { digest, jsonPath, mdPath } = await pipeline.run({ windowHours, dryLLM });
+    let delivered = null;
+    if (!skipDelivery && !dryLLM) {
+      delivered = await delivery.deliver(digest);
+    }
+    res.json({
+      ok: true,
+      duration_ms: Date.now() - t0,
+      metrics: digest.metrics,
+      proposals_count: digest.proposals?.length || 0,
+      summary_md: digest.summary_md,
+      archive: { json: jsonPath, md: mdPath },
+      delivery: delivered,
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'intel_scout_failed', message: e?.message || String(e) });
+  }
 });
 
 app.use(express.static(FRONTEND_DIR));

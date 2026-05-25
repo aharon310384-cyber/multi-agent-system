@@ -15,6 +15,9 @@ jobs:
     steps:
       - name: SSH deploy
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          PM2_NAME: ${{ secrets.PM2_NAME }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}

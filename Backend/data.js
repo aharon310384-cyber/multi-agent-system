@@ -8,6 +8,8 @@ const DEPARTMENTS = [
       { id: 'seo', name: 'SEO-специалист', skills: ['Семантика', 'Технический SEO'], inputs: ['Продукт', 'Регионы'], outputs: ['Контент-план', 'ТЗ на тексты'], tools: ['Ahrefs', 'Surfer SEO', 'Search Console'], example: 'Собрать 200 ключей и кластеризовать под пиллар-страницу.' },
       { id: 'smm', name: 'SMM-щик', skills: ['Контент-план', 'Автопостинг'], inputs: ['Стратегия', 'Тексты', 'Визуал'], outputs: ['Календарь', 'Публикации'], tools: ['Buffer', 'Canva', 'CapCut'], example: 'Сделать 14-дневный контент-план под Telegram и Instagram.' },
       { id: 'analyst', name: 'Аналитик', skills: ['Дашборды', 'Unit-экономика'], inputs: ['Данные', 'Воронки'], outputs: ['Отчёт', 'Дашборд'], tools: ['Looker Studio', 'Metabase', 'Mixpanel'], example: 'Построить дашборд по сквозной аналитике маркетинга за месяц.' },
+      { id: 'pr', name: 'PR / Brand-менеджер', skills: ['Медиа-присутствие', 'Репутация и кризисы', 'Founder в медиа'], inputs: ['Инфоповоды', 'Tone of voice'], outputs: ['Публикации в СМИ', 'Питчи журналистам'], tools: ['Pressfeed', 'Mediatoolkit', 'Notion'], example: 'Разместить кейс клиента в Forbes / VC.ru через 2 недели с измеримыми KPI охвата.' },
+      { id: 'email-marketer', name: 'Email / CRM-маркетолог', skills: ['Welcome-цепочки', 'Lifecycle и сегментация', 'Ретеншн-рассылки'], inputs: ['База контактов', 'Сегменты', 'Контент'], outputs: ['Триггерные цепочки', 'Метрики open/click'], tools: ['UniSender', 'Customer.io', 'HubSpot'], example: 'Запустить onboarding-цепочку из 5 писем с open ≥ 42% и click ≥ 6%.' },
     ],
   },
   {
@@ -15,6 +17,7 @@ const DEPARTMENTS = [
     output: 'Макеты', workload: 0.66, activeTasks: 4,
     agents: [
       { id: 'designer', name: 'Дизайнер', skills: ['Лендинги, КП, презентации', 'Деплой на Vercel'], inputs: ['Бриф', 'Тексты'], outputs: ['Дизайн', 'Деплой'], tools: ['Stitch', 'Figma', 'Next.js', 'Tailwind'], example: 'Сделать лендинг под КП на 8 секций с деплоем на Vercel.' },
+      { id: 'motion', name: 'Motion / Video', skills: ['Reels и YouTube-видео', 'Ad-creatives и моушен', 'Motion-приветствия'], inputs: ['Сценарий', 'Голос/музыка', 'Бренд-стиль'], outputs: ['Видео', 'Анимация'], tools: ['CapCut', 'After Effects', 'Runway', 'ElevenLabs'], example: 'Смонтировать 6 Reels под рекламную кампанию за 3 дня по бренд-стилю.' },
     ],
   },
   {
@@ -68,6 +71,27 @@ const DEPARTMENTS = [
     output: 'AI-дайджест', workload: 0.6, activeTasks: 2,
     agents: [
       { id: 'intel-scout', name: 'Intel-Scout', skills: ['Daily-мониторинг AI-стека', 'Фильтрация сигнал/шум', 'Дайджест с приоритизацией'], inputs: ['RSS, GitHub, Brave News, ArXiv'], outputs: ['Дайджест', 'Proposals в backlog'], tools: ['Brave Search', 'Firecrawl', 'OpenRouter', 'rss-reader'], example: 'Каждое утро присылать дайджест 3-5 находок по Claude Code, MCP, vibe-coding с приоритетами 🔴/🟡/🟢.' },
+    ],
+  },
+  {
+    id: 'hr', name: 'HR / Люди', accent: '#FFB87A', short: 'HR',
+    output: 'Команда', workload: 0.45, activeTasks: 2,
+    agents: [
+      { id: 'hr', name: 'HR-менеджер', skills: ['Подбор и найм', 'Онбординг', 'Performance review', 'Культура и мотивация'], inputs: ['Заявка на найм', 'Команда', 'Бенчмарки рынка'], outputs: ['Кандидаты', 'Оффер', 'Карьерные планы'], tools: ['hh.ru', 'LinkedIn', 'Notion', 'Lattice'], example: 'Закрыть вакансию Senior Frontend за 21 день с offer-acceptance ≥ 70%.' },
+    ],
+  },
+  {
+    id: 'finance', name: 'Финансы', accent: '#A8F0D2', short: 'ФИН',
+    output: 'P&L и кэшфлоу', workload: 0.5, activeTasks: 3,
+    agents: [
+      { id: 'finance', name: 'Финансист', skills: ['Бухгалтерия и налоги', 'P&L и кэшфлоу', 'Рентабельность сделок', 'Юнит-экономика'], inputs: ['Счета', 'Сделки', 'Расходы'], outputs: ['Отчёты', 'Прогноз', 'Налоги'], tools: ['1С', 'Эльба', 'Notion Finance', 'Excel'], example: 'Составить P&L за месяц с разбивкой по проектам и подсветить убыточные.' },
+    ],
+  },
+  {
+    id: 'legal', name: 'Юридический', accent: '#FF9E7A', short: 'ЮР',
+    output: 'Договоры и риски', workload: 0.35, activeTasks: 1,
+    agents: [
+      { id: 'lawyer', name: 'Юрист', skills: ['Договоры и оферты', 'NDA и ИС', 'Споры и претензии', 'Compliance (152-ФЗ, GDPR)'], inputs: ['Сделка', 'Контрагент', 'Регион'], outputs: ['Договор', 'Правовой риск-чек'], tools: ['КонсультантПлюс', 'DocuSign', 'Контур.Договоры'], example: 'Подготовить договор с зарубежным контрагентом с защитой ИС и платежами в USD.' },
     ],
   },
 ];

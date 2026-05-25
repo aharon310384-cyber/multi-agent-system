@@ -1,0 +1,38 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH deploy
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          command_timeout: 10m
+          script: |
+            set -e
+            cd "${{ secrets.DEPLOY_PATH }}"
+            git fetch --all --prune
+            git reset --hard origin/main
+            npm ci --omit=dev
+            if pm2 describe "${{ secrets.PM2_NAME }}" > /dev/null 2>&1; then
+              pm2 reload "${{ secrets.PM2_NAME }}" --update-env
+            else
+              pm2 start npm --name "${{ secrets.PM2_NAME }}" -- start
+            fi
+            pm2 save
+            sleep 3
+            curl -fsS http://127.0.0.1:3000/api/health > /tmp/deploy-health.json
+            cat /tmp/deploy-health.json

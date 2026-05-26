@@ -411,6 +411,53 @@ app.post('/api/embed', (_req, res) => {
   });
 });
 
+const TG_INBOX_DIR = path.resolve(__dirname, '..', 'Онлайн разведка', 'telegram-inbox');
+try { require('fs').mkdirSync(TG_INBOX_DIR, { recursive: true }); } catch {}
+
+app.post('/api/telegram/webhook', express.json({ limit: '1mb' }), (req, res) => {
+  const expected = process.env.TELEGRAM_WEBHOOK_SECRET;
+  if (expected) {
+    const got = req.headers['x-telegram-bot-api-secret-token'];
+    if (got !== expected) return res.status(401).json({ error: 'unauthorized' });
+  }
+  try {
+    const fs = require('fs');
+    const date = new Date().toISOString().slice(0, 10);
+    const file = path.join(TG_INBOX_DIR, `${date}.jsonl`);
+    const entry = { received_at: new Date().toISOString(), update: req.body };
+    fs.appendFileSync(file, JSON.stringify(entry) + '\n', 'utf8');
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[tg-webhook] write failed:', e.message);
+    res.status(500).json({ error: 'write_failed', message: e.message });
+  }
+});
+
+app.get('/api/telegram/inbox', (req, res) => {
+  const expected = process.env.INBOX_READ_TOKEN;
+  const got = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  if (!expected || got !== expected) return res.status(401).json({ error: 'unauthorized' });
+  try {
+    const fs = require('fs');
+    const since = req.query.since ? new Date(req.query.since).getTime() : 0;
+    const limit = Math.min(Number(req.query.limit) || 100, 500);
+    const files = fs.readdirSync(TG_INBOX_DIR).filter((f) => f.endsWith('.jsonl')).sort().slice(-3);
+    const items = [];
+    for (const f of files) {
+      const lines = fs.readFileSync(path.join(TG_INBOX_DIR, f), 'utf8').split('\n').filter(Boolean);
+      for (const line of lines) {
+        try {
+          const e = JSON.parse(line);
+          if (new Date(e.received_at).getTime() > since) items.push(e);
+        } catch {}
+      }
+    }
+    res.json({ count: items.length, items: items.slice(-limit) });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post('/api/intel-scout/run', async (req, res) => {
   if (!OPENROUTER_API_KEY) return res.status(500).json({ error: 'OPENROUTER_API_KEY не задан в .env' });
   const windowHours = Number(req.body?.windowHours) > 0 ? Number(req.body.windowHours) : 24;

@@ -8,6 +8,7 @@ const { DEPARTMENTS, ORCHESTRATOR, SCENARIOS, FLOW_EDGES, ROUTING_RULES, routeTa
 const { buildAgentSystemPrompt, buildOrchestratorPrompt } = require('./agent-prompt');
 const { resolveModel, getTaskType, getImageModel, applyCacheControl, DEFAULT_MODELS } = require('./model-router');
 const { getToolsForAgent, hasTools, executeTool, TOOLS_PROMPT_BLOCK } = require('./tools');
+const { WORKSPACE_DIR } = require('./workspace-tools');
 
 const PORT = Number(process.env.PORT) || 38731;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -101,39 +102,95 @@ async function runDelegate(args) {
   if (!sub) return { error: 'agent_not_found', agent_id: targetId };
   if (sub.isOrchestrator) return { error: 'cannot_delegate_to_orchestrator' };
 
-  const systemPrompt = buildAgentSystemPrompt(sub.agent, sub.dept, { toolsBlock: '' });
+  const subTools = getToolsForAgent(sub.agent.id);
+  const systemPrompt = buildAgentSystemPrompt(sub.agent, sub.dept, {
+    toolsBlock: subTools && subTools.length ? TOOLS_PROMPT_BLOCK : '',
+  });
   const userPrompt = context ? `${task}\n\n— Контекст от оркестратора —\n${context}` : task;
   const model = resolveModel(sub.agent.id);
+  const taskType = getTaskType(sub.agent.id);
 
-  const r = await fetch(OPENROUTER_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'http://localhost',
-      'X-Title': 'Multi-Agent Delegate',
-    },
-    body: JSON.stringify({
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userPrompt },
+  ];
+
+  const MAX_TOOL_ITER = 4;
+  const savedArtifacts = [];
+
+  for (let iter = 0; iter < MAX_TOOL_ITER + 1; iter++) {
+    const body = {
       model,
-      messages: applyCacheControl([
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ], model),
-      temperature: getTaskType(sub.agent.id) === 'dev' ? 0.3 : 0.6,
-    }),
-  });
-  const txt = await r.text();
-  if (!r.ok) return { error: 'delegate_llm_error', status: r.status, body: txt.slice(0, 400), agent_id: targetId };
-  let json;
-  try { json = JSON.parse(txt); } catch { return { error: 'invalid_json', agent_id: targetId }; }
-  const reply = json.choices?.[0]?.message?.content || '';
-  return {
-    agent_id: targetId,
-    agent_name: sub.agent.name,
-    dept_name: sub.dept?.name || null,
-    model,
-    reply,
-  };
+      messages: applyCacheControl(messages, model),
+      temperature: taskType === 'dev' ? 0.3 : 0.6,
+    };
+    if (subTools && subTools.length) {
+      // delegate-агенты не имеют права делегировать дальше — убираем delegate-tool у них.
+      body.tools = subTools.filter((t) => t.function?.name !== 'delegate');
+      body.tool_choice = 'auto';
+    }
+
+    const r = await fetch(OPENROUTER_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'http://localhost',
+        'X-Title': 'Multi-Agent Delegate',
+      },
+      body: JSON.stringify(body),
+    });
+    const txt = await r.text();
+    if (!r.ok) return { error: 'delegate_llm_error', status: r.status, body: txt.slice(0, 400), agent_id: targetId };
+    let json;
+    try { json = JSON.parse(txt); } catch { return { error: 'invalid_json', agent_id: targetId }; }
+    const msg = json.choices?.[0]?.message;
+    if (!msg) return { error: 'no_message', agent_id: targetId };
+
+    const toolCalls = Array.isArray(msg.tool_calls) ? msg.tool_calls : [];
+    if (toolCalls.length && iter < MAX_TOOL_ITER) {
+      messages.push({
+        role: 'assistant',
+        content: msg.content || '',
+        tool_calls: toolCalls.map((tc) => ({
+          id: tc.id,
+          type: 'function',
+          function: { name: tc.function?.name, arguments: tc.function?.arguments || '{}' },
+        })),
+      });
+      for (const tc of toolCalls) {
+        const name = tc.function?.name;
+        let toolArgs = {};
+        try { toolArgs = tc.function?.arguments ? JSON.parse(tc.function.arguments) : {}; } catch {}
+        let result;
+        try {
+          result = await executeTool(name, toolArgs);
+        } catch (err) {
+          result = { error: err?.message || String(err) };
+        }
+        if (name === 'save_file' && result && result.ok) {
+          savedArtifacts.push({ path: result.path, url: result.url, bytes: result.bytes });
+        }
+        messages.push({
+          role: 'tool',
+          tool_call_id: tc.id,
+          content: JSON.stringify(result),
+        });
+      }
+      continue;
+    }
+
+    return {
+      agent_id: targetId,
+      agent_name: sub.agent.name,
+      dept_name: sub.dept?.name || null,
+      model,
+      reply: msg.content || '',
+      artifacts: savedArtifacts,
+    };
+  }
+
+  return { error: 'tool_loop_limit', agent_id: targetId, artifacts: savedArtifacts };
 }
 
 async function runChatTurn({ model, messages, taskType, tools, sendEvent }) {
@@ -336,13 +393,19 @@ app.post('/api/chat', async (req, res) => {
             sendEvent('tool_error', { id: tc.id, name, message: result.error });
           }
           if (!isError) {
-            const summary = name === 'firecrawl_search'
-              ? { query: result.query, count: result.results?.length || 0 }
-              : name === 'firecrawl_scrape'
-                ? { url: result.url, title: result.title, chars: result.markdown?.length || 0 }
-                : name === 'delegate'
-                  ? { agent_id: args.agent_id, agentName: meta.agentName, chars: (result.reply || '').length, model: result.model }
-                  : {};
+            let summary = {};
+            if (name === 'firecrawl_search') summary = { query: result.query, count: result.results?.length || 0 };
+            else if (name === 'firecrawl_scrape') summary = { url: result.url, title: result.title, chars: result.markdown?.length || 0 };
+            else if (name === 'delegate') summary = {
+              agent_id: args.agent_id,
+              agentName: meta.agentName,
+              chars: (result.reply || '').length,
+              model: result.model,
+              artifacts: result.artifacts || [],
+            };
+            else if (name === 'save_file') summary = { path: result.path, url: result.url, bytes: result.bytes };
+            else if (name === 'read_file') summary = { path: result.path, bytes: result.bytes, url: result.url };
+            else if (name === 'list_files') summary = { path: result.path, count: result.entries?.length || 0 };
             sendEvent('tool_result', { id: tc.id, name, summary });
           }
           chatMessages.push({
@@ -493,6 +556,13 @@ app.post('/api/intel-scout/run', async (req, res) => {
   }
 });
 
+app.use('/workspace', express.static(WORKSPACE_DIR, {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    if (filePath.endsWith('.md')) res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+    if (filePath.endsWith('.json')) res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  },
+}));
 app.use(express.static(FRONTEND_DIR));
 app.get('/', (_req, res) => res.sendFile(path.join(FRONTEND_DIR, 'index.html')));
 

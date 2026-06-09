@@ -1,6 +1,12 @@
 const firecrawl = require('./firecrawl');
 const brave = require('./brave');
 const { DEPARTMENTS } = require('./data');
+const {
+  WORKSPACE_TOOLS,
+  WORKSPACE_TOOLS_PROMPT_BLOCK,
+  executeWorkspaceTool,
+  isWorkspaceTool,
+} = require('./workspace-tools');
 
 const DELEGATE_AGENT_IDS = DEPARTMENTS.flatMap((d) => d.agents.map((a) => a.id));
 
@@ -117,26 +123,33 @@ const WEB_TOOL_AGENTS = new Set([
   'intel-scout',
 ]);
 
-const TOOL_DEFS = [DELEGATE_TOOL, ...WEB_TOOLS];
+const TOOL_DEFS = [DELEGATE_TOOL, ...WEB_TOOLS, ...WORKSPACE_TOOLS];
 
-function hasTools(agentId) {
-  return agentId === 'chief' || WEB_TOOL_AGENTS.has(agentId);
+function hasWebKeys() {
+  return Boolean(process.env.FIRECRAWL_API_KEY || process.env.BRAVE_API_KEY);
+}
+
+function hasTools(_agentId) {
+  // workspace-tools всегда доступны всем — это базовая «память» системы.
+  return true;
 }
 
 function getToolsForAgent(agentId) {
+  const tools = [...WORKSPACE_TOOLS];
   if (agentId === 'chief') {
-    return process.env.FIRECRAWL_API_KEY || process.env.BRAVE_API_KEY
-      ? [DELEGATE_TOOL, ...WEB_TOOLS]
-      : [DELEGATE_TOOL];
+    tools.unshift(DELEGATE_TOOL);
+    if (hasWebKeys()) tools.push(...WEB_TOOLS);
+    return tools;
   }
-  if (WEB_TOOL_AGENTS.has(agentId) && (process.env.FIRECRAWL_API_KEY || process.env.BRAVE_API_KEY)) {
-    return WEB_TOOLS;
+  if (WEB_TOOL_AGENTS.has(agentId) && hasWebKeys()) {
+    tools.push(...WEB_TOOLS);
   }
-  return null;
+  return tools;
 }
 
 async function executeTool(name, rawArgs) {
   const args = rawArgs && typeof rawArgs === 'object' ? rawArgs : {};
+  if (isWorkspaceTool(name)) return await executeWorkspaceTool(name, args);
   if (name === 'firecrawl_search') return await firecrawl.search(args);
   if (name === 'firecrawl_scrape') return await firecrawl.scrape(args);
   if (name === 'brave_search') return await brave.search(args);
@@ -148,13 +161,16 @@ async function executeTool(name, rawArgs) {
 }
 
 const TOOLS_PROMPT_BLOCK = [
-  'Доступные инструменты (function calling):',
+  WORKSPACE_TOOLS_PROMPT_BLOCK,
+  '',
+  'Веб-инструменты (если включены ключи Firecrawl/Brave):',
   '— brave_search(query, count, freshness): быстрый поиск в вебе. Дёшево и быстро (~700ms). Лучший выбор для daily-discovery и проверки актуальности.',
   '— brave_news(query, count, freshness): свежие новости. Используй для мониторинга AI-индустрии, релизов, инцидентов.',
   '— firecrawl_search(query, limit): альтернативный поиск через Firecrawl (дороже, но иногда даёт другие источники).',
   '— firecrawl_scrape(url): скачать страницу как markdown. Используй, когда URL уже известен (например, из brave_search/brave_news).',
   '',
   'Правила:',
+  '— Любой готовый артефакт (HTML, MD, JSON, код, отчёт) — сохраняй через save_file. Без save_file файл нигде не появится.',
   '— Сначала brave_search/brave_news для discovery → потом firecrawl_scrape для глубокого чтения нужных страниц.',
   '— Если задача требует свежих данных (бенчмарки, цены, релизы, конкуренты) — сначала иди в веб.',
   '— Цитируя факт из веба — указывай источник (URL) и дату.',

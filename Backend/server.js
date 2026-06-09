@@ -9,7 +9,7 @@ const { buildAgentSystemPrompt, buildOrchestratorPrompt } = require('./agent-pro
 const { resolveModel, getTaskType, getImageModel, applyCacheControl, DEFAULT_MODELS } = require('./model-router');
 const { getToolsForAgent, hasTools, executeTool, TOOLS_PROMPT_BLOCK } = require('./tools');
 
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = Number(process.env.PORT) || 38731;
 const HOST = process.env.HOST || '0.0.0.0';
 const FRONTEND_DIR = path.resolve(__dirname, '..', 'Frontend');
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;

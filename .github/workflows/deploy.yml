@@ -27,6 +27,10 @@ jobs:
             git fetch --all --prune
             git reset --hard origin/main
             npm ci --omit=dev
+            # Открываем новый порт в ufw (если ufw активен — добавим, иначе no-op).
+            if command -v ufw >/dev/null 2>&1 && ufw status | grep -q "Status: active"; then
+              ufw allow 38731/tcp || true
+            fi
             if pm2 describe multi-agent > /dev/null 2>&1; then
               pm2 reload multi-agent --update-env
             else
@@ -34,5 +38,9 @@ jobs:
             fi
             pm2 save
             sleep 3
-            curl -fsS http://127.0.0.1:3000/api/health > /tmp/deploy-health.json
+            curl -fsS http://127.0.0.1:38731/api/health > /tmp/deploy-health.json
             cat /tmp/deploy-health.json
+            # После успешного healthcheck закрываем старый порт 3000.
+            if command -v ufw >/dev/null 2>&1 && ufw status | grep -q "Status: active"; then
+              ufw delete allow 3000/tcp || true
+            fi

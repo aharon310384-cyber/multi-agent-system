@@ -18,7 +18,7 @@
 | Корневая директория| `/` (корень репо)                   |
 | Команда сборки     | `npm ci` (или `npm install`)        |
 | Команда запуска    | `npm start`                         |
-| Порт               | **`3000`** (или из `PORT`)          |
+| Порт               | **`38731`** (или из `PORT`)         |
 | Healthcheck path   | `/api/health`                       |
 
 Корневой `package.json` уже настроен: `start` запускает `node Backend/server.js`, сервер слушает `HOST=0.0.0.0` и `PORT` из env. Версия Node фиксируется файлом `.nvmrc` в корне — Timeweb сам подберёт совместимый рантайм.
@@ -42,7 +42,7 @@
 | `OPENROUTER_MODEL_INTEL_SCOUT`   | override модели для анализа в digest.js (по умолчанию `anthropic/claude-sonnet-4.5`) | Нет |
 | `OPENROUTER_MODEL_FILTER`        | override модели для фильтра шума в noise-filter.js (по умолчанию `google/gemini-2.5-flash`) | Нет |
 | `VT_API_KEY`                     | ключ с <https://www.virustotal.com/gui/my-apikey> (бесплатный, 500 req/day) | Нет (без него `mcp__osint-mcp-server__vt_domain` отключён — security-check новых RSS-источников будет только через whois+dns) |
-| `PORT`                           | `3000` (если Timeweb не пробрасывает свой) | Зависит от платформы |
+| `PORT`                           | `38731` (если Timeweb не пробрасывает свой) | Зависит от платформы |
 
 Дефолты моделей зашиты в `Backend/model-router.js` — если не задавать override, он подставит их сам.
 

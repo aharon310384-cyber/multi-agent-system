@@ -15,7 +15,7 @@
 ```bash
 cd ../Backend
 npm start
-# открыть http://localhost:3000
+# открыть http://localhost:38731
 ```
 
 ## Чат-маршрутизатор

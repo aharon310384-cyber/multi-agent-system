@@ -11,7 +11,7 @@ npm start                  # node server.js
 npm run dev                # node --watch server.js
 ```
 
-По умолчанию `http://localhost:3000`. Переопределение: `PORT=3001 npm start` (Linux/Mac) или `$env:PORT=3001; npm start` (PowerShell).
+По умолчанию `http://localhost:38731`. Переопределение: `PORT=4000 npm start` (Linux/Mac) или `$env:PORT=4000; npm start` (PowerShell).
 
 ## Эндпойнты
 

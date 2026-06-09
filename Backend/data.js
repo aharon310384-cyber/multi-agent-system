@@ -315,10 +315,37 @@ const FLOW_EDGES = [
   { from: 'it', to: 'marketing', label: 'метрики', kind: 'dashed' },
   { from: 'sales', to: 'orchestrator', label: 'отчёт', kind: 'thin' },
   { from: 'orchestrator', to: 'management', label: 'задача', kind: 'thin' },
+
+  // Безопасность — аудит кода/инфры и инциденты
+  { from: 'it', to: 'security', label: 'код / инфра на ревью', kind: 'solid' },
+  { from: 'security', to: 'it', label: 'вердикт / уязвимости', kind: 'dashed' },
+  { from: 'security', to: 'orchestrator', label: 'инциденты', kind: 'thin' },
+
+  // Онлайн разведка — бенчмарки, тренды, предложения по стеку
+  { from: 'intel', to: 'management', label: 'AI-дайджест / бенчмарки', kind: 'solid' },
+  { from: 'intel', to: 'it', label: 'предложения по стеку', kind: 'dashed' },
+  { from: 'orchestrator', to: 'intel', label: 'запрос на мониторинг', kind: 'thin' },
+
+  // HR — найм и здоровье команды
+  { from: 'management', to: 'hr', label: 'заявка на найм', kind: 'solid' },
+  { from: 'hr', to: 'orchestrator', label: 'команда / eNPS', kind: 'thin' },
+
+  // Finance — выручка от sales, бюджеты от management, P&L наверх
+  { from: 'sales', to: 'finance', label: 'счета / выручка', kind: 'solid' },
+  { from: 'management', to: 'finance', label: 'бюджеты', kind: 'solid' },
+  { from: 'finance', to: 'orchestrator', label: 'P&L / кэшфлоу', kind: 'thin' },
+
+  // Юридический — договоры и compliance
+  { from: 'sales', to: 'legal', label: 'договоры', kind: 'solid' },
+  { from: 'legal', to: 'sales', label: 'правовой риск', kind: 'dashed' },
+  { from: 'management', to: 'legal', label: 'compliance / оферта', kind: 'dashed' },
 ];
 
 const ROUTING_RULES = [
   { keys: ['дизайн', 'лендинг', 'кп ', 'коммерческое', 'презентац', 'смета', 'тз', 'креатив', 'макет', 'figma', 'stitch', 'vercel'], agent: 'designer', dept: 'design' },
+  { keys: ['motion', 'моушен', 'видеоролик', 'видео для', 'reels-видео', 'shorts-видео', 'capcut', 'after effects', 'монтаж', 'ad-creative', 'смонтиров', 'анимац'], agent: 'motion', dept: 'design' },
+  { keys: ['welcome-цеп', 'welcome цеп', 'lifecycle', 'триггерн', 'mailchimp', 'unisender', 'customer.io', 'onboarding-цеп', 'ретеншн-рассылк', 'email-маркет', 'crm-маркет'], agent: 'email-marketer', dept: 'marketing' },
+  { keys: ['pr ', 'pr-', 'медиа-присутств', 'журналист', 'питч ', 'forbes', 'vc.ru', 'размещение в сми', 'инфоповод', 'репутац', 'кризис-коммуник', 'press release', 'пресс-релиз'], agent: 'pr', dept: 'marketing' },
   { keys: ['текст', 'пост', 'статья', 'описание', 'оффер', 'заголовок', 'рассылк', 'email', 'копирайт'], agent: 'copywriter', dept: 'copywriting' },
   { keys: ['smm', 'инстаграм', 'instagram', 'telegram', 'сторис', 'reels', 'tiktok', 'подписчик'], agent: 'smm', dept: 'marketing' },
   { keys: ['seo', 'органик', 'ключев', 'позиц', 'индекс', 'lighthouse', 'core web vitals'], agent: 'seo', dept: 'marketing' },
@@ -327,18 +354,23 @@ const ROUTING_RULES = [
   { keys: ['аналитик', 'дашборд', 'отчёт', 'отчет', 'метрик', 'a/b', 'unit-эконом'], agent: 'analyst', dept: 'marketing' },
   { keys: ['продаж', 'sales', 'сделк', 'переговор', 'демо', 'crm', 'win rate'], agent: 'sales', dept: 'sales' },
   { keys: ['клиент', 'аккаунт', 'удержан', 'churn', 'апсейл', 'cross-sell', 'qbr', 'nrr'], agent: 'account', dept: 'sales' },
+  { keys: ['intel-scout', 'дайджест', 'мониторинг ai', 'mcp-сервер', 'agentic', 'vibe-coding', 'новости ai-стека', 'rss-дайдж'], agent: 'intel-scout', dept: 'intel' },
   { keys: ['ai', 'llm', 'rag', 'ml', 'промпт', 'модель', 'embed', 'eval', 'multi-agent'], agent: 'aiml', dept: 'it' },
   { keys: ['backend', 'бэк', 'api', 'эндпойнт', 'база данных', 'postgres', 'redis', 'миграц'], agent: 'backend', dept: 'it' },
   { keys: ['frontend', 'фронт', 'ui', 'react', 'next.js', 'компонент', 'bundle'], agent: 'frontend', dept: 'it' },
   { keys: ['mobile', 'мобильн', 'ios', 'android', 'react native', 'expo', 'app store', 'google play'], agent: 'mobile', dept: 'it' },
   { keys: ['devops', 'ci/cd', 'docker', 'kubernetes', 'terraform', 'инфра', 'pipeline', 'observability', 'monitor'], agent: 'devops', dept: 'it' },
   { keys: ['qa', 'тест', 'регресс', 'playwright', 'autotest', 'e2e', 'flaky'], agent: 'qa', dept: 'it' },
+  { keys: ['секрет в репо', '.env ', 'утечк токен', 'утечк секрет', 'прод-действ', 'доступ к проду', 'gitleaks', 'trufflehog', 'incident response', 'агент безопасн', 'security-officer'], agent: 'security-officer', dept: 'security' },
   { keys: ['security', 'безопасн', 'уязвим', 'cve', 'pentest', 'owasp', 'sast', 'dast'], agent: 'security', dept: 'it' },
-  { keys: ['архитектур', 'tech lead', 'adr', 'c4', 'review', 'on-call', 'dora'], agent: 'techlead', dept: 'it' },
+  { keys: ['найм', 'наём', 'вакансия', 'кандидат', 'онбординг', 'performance review', 'оффер кандидат', 'attrition', 'enps', 'hr ', 'hr-', 'культура команд'], agent: 'hr', dept: 'hr' },
+  { keys: ['архитектур', 'tech lead', 'adr', 'code review', 'код-ревью', 'pr review', 'c4', 'on-call', 'dora'], agent: 'techlead', dept: 'it' },
   { keys: ['data', 'etl', 'dwh', 'bigquery', 'snowflake', 'dbt', 'airbyte', 'pipeline данных'], agent: 'data', dept: 'it' },
   { keys: ['pm', 'project manager', 'проект', 'roadmap', 'сроки', 'риск', 'статус', 'velocity'], agent: 'pm', dept: 'management' },
   { keys: ['бизнес-аналитик', 'требован', 'user stor', 'bpmn', 'спецификац', 'acceptance'], agent: 'ba', dept: 'management' },
   { keys: ['осинт', 'osint', 'разведк', 'бенчмарк', 'окр ', 'okr', 'конкурент', 'исследован'], agent: 'osint', dept: 'management' },
+  { keys: ['бюджет', 'p&l', 'налог', 'кэшфлоу', 'cashflow', 'рентабельн', 'счет-фактур', 'счёт-фактур', 'gross margin', 'фин-отчёт', 'финансист', 'бухгалтер', 'выручк'], agent: 'finance', dept: 'finance' },
+  { keys: ['договор', 'оферт', 'nda', 'gdpr', '152-фз', 'претензи', 'compliance', 'юр риск', 'правов', 'интеллект собств', 'юрист'], agent: 'lawyer', dept: 'legal' },
 ];
 
 DEPARTMENTS.forEach(d => d.agents.forEach(a => { if (OKR[a.id]) a.okr = OKR[a.id]; }));

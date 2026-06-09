@@ -31,14 +31,20 @@ jobs:
             if command -v ufw >/dev/null 2>&1 && ufw status | grep -q "Status: active"; then
               ufw allow 38731/tcp || true
             fi
+            # Полный пересоздание процесса, чтобы env (включая PORT) применились корректно.
+            export PORT=38731
             if pm2 describe multi-agent > /dev/null 2>&1; then
-              pm2 reload multi-agent --update-env
-            else
-              pm2 start npm --name multi-agent -- start
+              pm2 delete multi-agent || true
             fi
+            pm2 start npm --name multi-agent --update-env -- start
             pm2 save
-            sleep 3
-            curl -fsS http://127.0.0.1:38731/api/health > /tmp/deploy-health.json
+            # Ждём, пока сервер начнёт слушать (до 30 секунд).
+            for i in $(seq 1 15); do
+              if curl -fsS http://127.0.0.1:38731/api/health > /tmp/deploy-health.json 2>/dev/null; then
+                break
+              fi
+              sleep 2
+            done
             cat /tmp/deploy-health.json
             # После успешного healthcheck закрываем старый порт 3000.
             if command -v ufw >/dev/null 2>&1 && ufw status | grep -q "Status: active"; then

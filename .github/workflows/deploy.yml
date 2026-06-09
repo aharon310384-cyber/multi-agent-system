@@ -46,6 +46,17 @@ jobs:
               sleep 2
             done
             cat /tmp/deploy-health.json
+            # Обновляем upstream-порт в nginx (если nginx стоит и проксирует на :3000).
+            if command -v nginx >/dev/null 2>&1; then
+              NGINX_CONF=$(grep -lrE "proxy_pass[[:space:]]+http://(127\.0\.0\.1|localhost):3000" /etc/nginx 2>/dev/null | head -1 || true)
+              if [ -n "$NGINX_CONF" ]; then
+                echo "patching $NGINX_CONF: :3000 -> :38731"
+                sed -i -E 's#(proxy_pass[[:space:]]+http://(127\.0\.0\.1|localhost)):3000#\1:38731#g' "$NGINX_CONF"
+                nginx -t && systemctl reload nginx
+              else
+                echo "nginx detected, no :3000 upstream found — skipping"
+              fi
+            fi
             # После успешного healthcheck закрываем старый порт 3000.
             if command -v ufw >/dev/null 2>&1 && ufw status | grep -q "Status: active"; then
               ufw delete allow 3000/tcp || true

@@ -46,15 +46,20 @@ jobs:
               sleep 2
             done
             cat /tmp/deploy-health.json
-            # Обновляем upstream-порт в nginx (если nginx стоит и проксирует на :3000).
+            # Обновляем upstream-порт в nginx (если nginx стоит и где-то указан :3000 на loopback).
             if command -v nginx >/dev/null 2>&1; then
-              NGINX_CONF=$(grep -lrE "proxy_pass[[:space:]]+http://(127\.0\.0\.1|localhost):3000" /etc/nginx 2>/dev/null | head -1 || true)
-              if [ -n "$NGINX_CONF" ]; then
-                echo "patching $NGINX_CONF: :3000 -> :38731"
-                sed -i -E 's#(proxy_pass[[:space:]]+http://(127\.0\.0\.1|localhost)):3000#\1:38731#g' "$NGINX_CONF"
+              NGINX_FILES=$(grep -lrE "(127\.0\.0\.1|localhost):3000" /etc/nginx 2>/dev/null || true)
+              if [ -n "$NGINX_FILES" ]; then
+                echo "patching nginx files:"
+                echo "$NGINX_FILES"
+                # 1) proxy_pass http://(loopback):3000
+                # 2) server (loopback):3000  внутри upstream-блоков
+                echo "$NGINX_FILES" | xargs -r sed -i -E \
+                  -e 's#(proxy_pass[[:space:]]+http://(127\.0\.0\.1|localhost)):3000#\1:38731#g' \
+                  -e 's#(server[[:space:]]+(127\.0\.0\.1|localhost)):3000#\1:38731#g'
                 nginx -t && systemctl reload nginx
               else
-                echo "nginx detected, no :3000 upstream found — skipping"
+                echo "nginx detected, no :3000 loopback refs — skipping"
               fi
             fi
             # После успешного healthcheck закрываем старый порт 3000.

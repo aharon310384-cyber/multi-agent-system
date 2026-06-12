@@ -11,19 +11,20 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0B1220;
-    --bg2: #0E1726;
-    --surface: #16202E;
-    --surface-2: #1A2536;
-    --border: rgba(255,255,255,0.1);
-    --border-strong: rgba(255,255,255,0.18);
-    --text: #F4F7FA;
-    --text-2: #98A4B6;
-    --text-3: #6B7686;
-    --cyan: #4DE3FF;
-    --green: #66F2A6;
-    --amber: #F6C85F;
-    --red: #FF5C7A;
+    /* Cobalt2 palette (Wes Bos) */
+    --bg: #193549;
+    --bg2: #15232D;
+    --surface: #1B3A52;
+    --surface-2: #23506F;
+    --border: rgba(225,239,255,0.12);
+    --border-strong: rgba(255,198,0,0.32);
+    --text: #FFFFFF;
+    --text-2: #A8C7E0;
+    --text-3: #5F88A8;
+    --cyan: #9EFFFF;
+    --green: #3AD900;
+    --amber: #FFC600;
+    --red: #FF628C;
   }
   * { box-sizing: border-box; }
   html, body, #root { height: 100%; margin: 0; }
@@ -45,9 +46,9 @@
     grid-template-rows: 50px 1fr auto;
     height: 100vh;
     background:
-      radial-gradient(ellipse 60% 60% at 50% 40%, rgba(77,227,255,0.07), transparent 70%),
-      radial-gradient(ellipse 70% 50% at 50% 100%, rgba(102,242,166,0.04), transparent 70%),
-      linear-gradient(180deg, #0E1828 0%, #0A1220 50%, #0B1220 100%);
+      radial-gradient(ellipse 60% 60% at 50% 40%, rgba(255,198,0,0.06), transparent 70%),
+      radial-gradient(ellipse 70% 50% at 50% 100%, rgba(158,255,255,0.05), transparent 70%),
+      linear-gradient(180deg, #1B3A52 0%, #15293A 50%, #122430 100%);
   }
 
   /* ============================ Top bar ============================ */
@@ -174,9 +175,9 @@
     width: 180px; height: 180px;
     border-radius: 50%;
     background:
-      radial-gradient(circle at 30% 30%, rgba(77,227,255,0.22), transparent 60%),
-      linear-gradient(160deg, #0F1620, #07090D);
-    border: 1.5px solid rgba(77,227,255,0.55);
+      radial-gradient(circle at 30% 30%, rgba(255,198,0,0.22), transparent 60%),
+      linear-gradient(160deg, #1B3A52, #122430);
+    border: 1.5px solid rgba(255,198,0,0.6);
     display: grid; place-items: center;
     box-shadow:
       0 0 0 1px rgba(77,227,255,0.1),
@@ -237,7 +238,7 @@
   }
   .dept-frame {
     position: relative;
-    background: linear-gradient(180deg, var(--surface), #0C1118);
+    background: linear-gradient(180deg, var(--surface), #12252F);
     border: 1px solid var(--border-strong);
     border-radius: 10px;
     padding: 14px 16px;
@@ -313,7 +314,7 @@
     width: fit-content;
     text-transform: uppercase;
   }
-  .node-agent:hover .agent-frame { border-color: var(--border-strong); background: #181F29; }
+  .node-agent:hover .agent-frame { border-color: var(--border-strong); background: #1F4258; }
   .node-agent.is-selected .agent-frame { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan), 0 4px 14px rgba(77,227,255,0.18); }
 
   /* Artifact */

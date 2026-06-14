@@ -147,9 +147,9 @@ function getToolsForAgent(agentId) {
   return tools;
 }
 
-async function executeTool(name, rawArgs) {
+async function executeTool(name, rawArgs, ctx) {
   const args = rawArgs && typeof rawArgs === 'object' ? rawArgs : {};
-  if (isWorkspaceTool(name)) return await executeWorkspaceTool(name, args);
+  if (isWorkspaceTool(name)) return await executeWorkspaceTool(name, args, ctx);
   if (name === 'firecrawl_search') return await firecrawl.search(args);
   if (name === 'firecrawl_scrape') return await firecrawl.scrape(args);
   if (name === 'brave_search') return await brave.search(args);

@@ -24,3 +24,6 @@ Thumbs.db
 
 # Workspace — артефакты, сохранённые агентами через save_file. Не в git, живут на сервере.
 workspace/
+
+# Логи локального веб-сервера (демон MultiAgentServer)
+server-logs/

@@ -255,6 +255,14 @@
     background: var(--surface);
     border-bottom-left-radius: 4px;
   }
+  .msg-bubble a {
+    color: var(--cyan);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+    word-break: break-all;
+  }
+  .msg-bubble a:hover { opacity: 0.8; }
   .msg-route {
     font-family: 'JetBrains Mono', monospace; font-size: 10.5px;
     color: var(--cyan); letter-spacing: 0.04em;
@@ -595,6 +603,28 @@ function AgentsSidebar() {
   );
 }
 
+/* ============ Рендер текста с кликабельными ссылками ============ */
+// Поддерживает markdown-ссылки [текст](url) и «голые» URL (http(s):// и /workspace/...).
+function renderRichText(text) {
+  if (!text) return null;
+  const re = /\[([^\]]+)\]\((\S+?)\)|((?:https?:\/\/|\/workspace\/)[^\s)<>"']+)/g;
+  const nodes = [];
+  let last = 0;
+  let key = 0;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) nodes.push(text.slice(last, m.index));
+    const label = m[1] !== undefined ? m[1] : m[3];
+    const href = m[1] !== undefined ? m[2] : m[3];
+    nodes.push(
+      <a key={key++} href={href} target="_blank" rel="noreferrer">{label}</a>
+    );
+    last = re.lastIndex;
+  }
+  if (last < text.length) nodes.push(text.slice(last));
+  return nodes;
+}
+
 /* ============ Chat messages ============ */
 function Message({ msg }) {
   const isUser = msg.role === 'user';
@@ -650,7 +680,7 @@ function Message({ msg }) {
         </div>
       )}
       <div className="msg-bubble">
-        {msg.content || (isStreaming ? <span className="typing"><span/><span/><span/></span> : '')}
+        {msg.content ? renderRichText(msg.content) : (isStreaming ? <span className="typing"><span/><span/><span/></span> : '')}
       </div>
       {Array.isArray(msg.images) && msg.images.length > 0 && (
         <div style={{display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6}}>

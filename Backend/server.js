@@ -92,7 +92,15 @@ function resolveAgent(agentId) {
   return null;
 }
 
-async function runDelegate(args) {
+function publicBaseUrl(req) {
+  const envBase = process.env.PUBLIC_BASE_URL;
+  if (envBase) return envBase.replace(/\/+$/, '');
+  const proto = String(req.headers['x-forwarded-proto'] || req.protocol || 'http').split(',')[0].trim();
+  const host = req.headers['x-forwarded-host'] || req.headers.host;
+  return host ? `${proto}://${host}` : '';
+}
+
+async function runDelegate(args, baseUrl) {
   const targetId = typeof args?.agent_id === 'string' ? args.agent_id : '';
   const task = typeof args?.task === 'string' ? args.task : '';
   const context = typeof args?.context === 'string' ? args.context : '';
@@ -164,7 +172,7 @@ async function runDelegate(args) {
         try { toolArgs = tc.function?.arguments ? JSON.parse(tc.function.arguments) : {}; } catch {}
         let result;
         try {
-          result = await executeTool(name, toolArgs);
+          result = await executeTool(name, toolArgs, { baseUrl });
         } catch (err) {
           result = { error: err?.message || String(err) };
         }
@@ -294,6 +302,8 @@ app.post('/api/chat', async (req, res) => {
   const resolved = resolveAgent(agentId);
   if (!resolved) return res.status(404).json({ error: 'agent_not_found' });
 
+  const baseUrl = publicBaseUrl(req);
+
   const agentTools = getToolsForAgent(resolved.agent.id);
   const toolsBlock = agentTools ? TOOLS_PROMPT_BLOCK : '';
 
@@ -383,9 +393,9 @@ app.post('/api/chat', async (req, res) => {
           let isError = false;
           try {
             if (name === 'delegate') {
-              result = await runDelegate(args);
+              result = await runDelegate(args, baseUrl);
             } else {
-              result = await executeTool(name, args);
+              result = await executeTool(name, args, { baseUrl });
             }
           } catch (err) {
             isError = true;

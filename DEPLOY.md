@@ -33,8 +33,8 @@
 | `OPENROUTER_MODEL_DEFAULT`       | `deepseek/deepseek-chat`            | Нет         |
 | `OPENROUTER_MODEL_DEV`           | `anthropic/claude-opus-4.7`         | Нет         |
 | `OPENROUTER_MODEL_MARKETING`     | `google/gemini-2.5-flash`           | Нет         |
-| `OPENROUTER_MODEL_ORCHESTRATION` | `minimax/minimax-m2`                | Нет         |
-| `OPENROUTER_MODEL_IMAGE`         | `google/gemini-2.5-flash-image-preview` | Нет     |
+| `OPENROUTER_MODEL_ORCHESTRATION` | `minimax/minimax-m2.7`              | Нет         |
+| `OPENROUTER_MODEL_IMAGE`         | `google/gemini-2.5-flash-image`    | Нет         |
 | `FIRECRAWL_API_KEY`              | ключ с <https://www.firecrawl.dev/app/api-keys> | Нет (без него агенты chief/маркетинг/ОСИНТ работают без веб-доступа) |
 | `BRAVE_API_KEY`                  | ключ с <https://api-dashboard.search.brave.com/register> | Нет (без него отключаются tools `brave_search`/`brave_news`; ~1K запросов/мес бесплатно на Free-плане) |
 | `TELEGRAM_BOT_TOKEN`             | токен Telegram-бота (получить у @BotFather) | Нет (без него `/api/intel-scout/run` пропускает доставку — дайджест возвращается только в HTTP-ответе и в `Онлайн разведка/архив/`) |
@@ -76,6 +76,24 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Projects\Многоаг�
 - Удалить: `schtasks /Delete /TN IntelScoutDaily /F`
 
 Логи каждого прогона: `Онлайн разведка/архив/cron-YYYY-MM-DD_HHMMSS.log` (+ `.err`).
+
+## 5.2 Автозапуск веб-сервера (Windows, локально)
+
+Чтобы веб-сервер (`Backend/server.js`) поднимался сам при входе в систему и не приходилось стартовать его вручную:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "C:\Projects\Многоагентная система\scripts\register-server-task.ps1"
+```
+
+Это создаст задачу `MultiAgentServer` (триггер — вход пользователя в систему), которая запускает `scripts/server-daemon.ps1` → `node Backend/server.js` на порту `38731`. Демон проверяет, не занят ли порт, поэтому повторные запуски не плодят копии. Задача без лимита времени (long-running).
+
+Полезные команды:
+- Запустить сейчас: `Start-ScheduledTask -TaskName MultiAgentServer`
+- Остановить: `Stop-ScheduledTask -TaskName MultiAgentServer`
+- Статус: `Get-ScheduledTask -TaskName MultiAgentServer | Get-ScheduledTaskInfo`
+- Удалить: `schtasks /Delete /TN MultiAgentServer /F`
+
+Логи: `server-logs/server.log` (предыдущий прогон — `server.log.prev`).
 
 ### Timeweb Cloud Apps (Linux)
 

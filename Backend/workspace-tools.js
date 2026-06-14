@@ -27,12 +27,16 @@ function sanitizeRelativePath(rel) {
   return { abs, rel: cleaned };
 }
 
-function publicUrl(relPath) {
+function publicUrl(relPath, baseUrl) {
   const safe = relPath.split('/').map(encodeURIComponent).join('/');
-  return `/workspace/${safe}`;
+  const rel = `/workspace/${safe}`;
+  if (typeof baseUrl === 'string' && baseUrl) {
+    return `${baseUrl.replace(/\/+$/, '')}${rel}`;
+  }
+  return rel;
 }
 
-async function saveFile(args) {
+async function saveFile(args, ctx) {
   const s = sanitizeRelativePath(args?.path);
   if (s.error) return { error: s.error };
   const content = typeof args?.content === 'string' ? args.content : '';
@@ -46,11 +50,11 @@ async function saveFile(args) {
     ok: true,
     path: s.rel,
     bytes,
-    url: publicUrl(s.rel),
+    url: publicUrl(s.rel, ctx?.baseUrl),
   };
 }
 
-async function readFile(args) {
+async function readFile(args, ctx) {
   const s = sanitizeRelativePath(args?.path);
   if (s.error) return { error: s.error };
   if (!fs.existsSync(s.abs)) return { error: 'not_found', path: s.rel };
@@ -64,11 +68,11 @@ async function readFile(args) {
     path: s.rel,
     bytes: stat.size,
     content: fs.readFileSync(s.abs, 'utf8'),
-    url: publicUrl(s.rel),
+    url: publicUrl(s.rel, ctx?.baseUrl),
   };
 }
 
-async function listFiles(args) {
+async function listFiles(args, ctx) {
   const sub = typeof args?.path === 'string' && args.path.trim() ? args.path : '';
   let baseAbs = WORKSPACE_DIR;
   let baseRel = '';
@@ -97,7 +101,7 @@ async function listFiles(args) {
           type: 'file',
           path: childRel,
           bytes: stat.size,
-          url: publicUrl(childRel),
+          url: publicUrl(childRel, ctx?.baseUrl),
         });
       }
     }
@@ -162,10 +166,10 @@ const WORKSPACE_TOOLS = [
   },
 ];
 
-async function executeWorkspaceTool(name, args) {
-  if (name === 'save_file') return saveFile(args || {});
-  if (name === 'read_file') return readFile(args || {});
-  if (name === 'list_files') return listFiles(args || {});
+async function executeWorkspaceTool(name, args, ctx) {
+  if (name === 'save_file') return saveFile(args || {}, ctx);
+  if (name === 'read_file') return readFile(args || {}, ctx);
+  if (name === 'list_files') return listFiles(args || {}, ctx);
   return null;
 }
 
